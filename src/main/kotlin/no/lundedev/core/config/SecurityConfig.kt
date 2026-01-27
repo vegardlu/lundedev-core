@@ -15,13 +15,11 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
-import org.springframework.stereotype.Component
 
 @ConfigurationProperties(prefix = "app.security")
-@Component
-class SecurityProperties {
-    var allowedClientIds: List<String> = emptyList()
-}
+data class SecurityProperties(
+    val allowedClientIds: List<String> = emptyList()
+)
 
 @Configuration
 @EnableWebSecurity
