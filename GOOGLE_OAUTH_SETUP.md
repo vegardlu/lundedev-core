@@ -104,6 +104,7 @@ Run with:
 
 ### "Access blocked: This app's request is invalid" / "redirect_uri_mismatch"
 - Check that the redirect URI exactly matches: `http://localhost:8080/login/oauth2/code/google`
+- **If behind a reverse proxy (nginx, Traefik, etc.)**: Make sure `server.forward-headers-strategy=framework` is set in `application.properties`. This ensures Spring uses `https://` when generating the redirect URI.
 
 ### "Error 401: deleted_client"
 - Your OAuth client was deleted. Create a new one.
