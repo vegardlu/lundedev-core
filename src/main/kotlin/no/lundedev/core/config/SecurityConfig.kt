@@ -19,9 +19,9 @@ import org.springframework.stereotype.Component
 
 @ConfigurationProperties(prefix = "app.security")
 @Component
-data class SecurityProperties(
-    val allowedClientIds: List<String> = emptyList()
-)
+class SecurityProperties {
+    var allowedClientIds: List<String> = emptyList()
+}
 
 @Configuration
 @EnableWebSecurity
