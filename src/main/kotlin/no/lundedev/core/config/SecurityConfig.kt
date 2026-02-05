@@ -15,6 +15,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @ConfigurationProperties(prefix = "app.security")
 data class SecurityProperties(
@@ -52,6 +55,8 @@ class SecurityConfig(
                     .requestMatchers(*SWAGGER_ENDPOINTS).permitAll()
                     .anyRequest().authenticated()
             }
+            .csrf { it.disable() } // Disable CSRF for API consistency
+            .cors { } // Enable CORS
             .oauth2Login { oauth2 ->
                 oauth2.defaultSuccessUrl("/swagger-ui.html", true)
             }
@@ -68,6 +73,18 @@ class SecurityConfig(
             }
 
         return http.build()
+    }
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val configuration = CorsConfiguration()
+        configuration.allowedOrigins = listOf("https://hjem.lundeberg.cc", "http://localhost:3000") // Allow frontend
+        configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        configuration.allowedHeaders = listOf("*")
+        configuration.allowCredentials = true
+        val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/**", configuration)
+        return source
     }
 
     @Bean
