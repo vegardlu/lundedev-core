@@ -2,9 +2,8 @@ package no.lundedev.core.controller
 
 import no.lundedev.core.service.LightDto
 import no.lundedev.core.service.LightService
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import no.lundedev.core.service.UpdateLightCommand
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -15,5 +14,15 @@ class DashboardController(
     @GetMapping("/lights")
     fun getLights(): List<LightDto> {
         return lightService.getLights()
+    }
+
+    @PostMapping("/lights/{id}/toggle")
+    fun toggleLight(@PathVariable id: String) {
+        lightService.toggleLight(id)
+    }
+
+    @PostMapping("/lights/{id}/state")
+    fun updateLight(@PathVariable id: String, @RequestBody cmd: UpdateLightCommand) {
+        lightService.updateLight(id, cmd)
     }
 }

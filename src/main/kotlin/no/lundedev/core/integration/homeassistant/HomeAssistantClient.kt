@@ -34,6 +34,21 @@ class HomeAssistantClient(
             emptyList()
         }
     }
+
+    fun callService(domain: String, service: String, entityId: String, data: Map<String, Any> = emptyMap()) {
+        logger.info("Calling service {}.{} for entity {}", domain, service, entityId)
+        try {
+            val payload = mapOf("entity_id" to entityId) + data
+            client.post()
+                .uri("/api/services/$domain/$service")
+                .body(payload)
+                .retrieve()
+                .toBodilessEntity()
+        } catch (e: Exception) {
+            logger.error("Failed to call service {}.{} for entity {}", domain, service, entityId, e)
+            throw e
+        }
+    }
 }
 
 data class EntityState(

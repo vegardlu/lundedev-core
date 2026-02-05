@@ -22,7 +22,36 @@ class LightService(
                 )
             }
     }
+    fun toggleLight(id: String) {
+        homeAssistantClient.callService("light", "toggle", id)
+    }
+
+    fun updateLight(id: String, cmd: UpdateLightCommand) {
+        val data = mutableMapOf<String, Any>()
+        if (cmd.isOn == true) {
+            // If explicit on/off is requested
+            homeAssistantClient.callService("light", "turn_on", id)
+        } else if (cmd.isOn == false) {
+             homeAssistantClient.callService("light", "turn_off", id)
+             return // If turning off, ignore other parameters
+        }
+
+        // If just adjusting params (which implies ON)
+        cmd.brightness?.let { data["brightness"] = it }
+        // Simple color support assuming RGB list for now
+        cmd.color?.let { data["rgb_color"] = it }
+
+        if (data.isNotEmpty()) {
+             homeAssistantClient.callService("light", "turn_on", id, data)
+        }
+    }
 }
+
+data class UpdateLightCommand(
+    val isOn: Boolean? = null,
+    val brightness: Int? = null,
+    val color: List<Int>? = null // [r, g, b]
+)
 
 data class LightDto(
     val id: String,
