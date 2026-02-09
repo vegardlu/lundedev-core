@@ -8,12 +8,18 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/dashboard")
 class DashboardController(
-    private val lightService: LightService
+    private val lightService: LightService,
+    private val weatherService: no.lundedev.core.service.WeatherService
 ) {
 
     @GetMapping("/lights")
     fun getLights(): List<LightDto> {
         return lightService.getLights()
+    }
+
+    @GetMapping("/weather")
+    fun getWeather(): List<no.lundedev.core.service.WeatherDto> {
+        return weatherService.getWeather()
     }
 
     @PostMapping("/lights/{id}/toggle")
