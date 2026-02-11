@@ -1,6 +1,7 @@
 package no.lundedev.core.controller
 
 import no.lundedev.core.service.GeminiService
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -15,18 +16,20 @@ data class ChatResponse(val response: String)
 class ChatController(
     private val geminiService: GeminiService
 ) {
+    private val logger = org.slf4j.LoggerFactory.getLogger(ChatController::class.java)
 
     @PostMapping
     fun chat(
         @RequestBody request: ChatRequest,
-        @RequestHeader("X-Session-Id", required = false) sessionId: String?
+        authentication: Authentication
     ): ChatResponse {
-        // Use provided session ID or default to a generic one per user if we had user context here.
-        // For now, let's use a default session or generate one. 
-        // In a real app, the session ID should probably come from the client to maintain history.
-        val activeSessionId = sessionId ?: "default-session"
-        
-        val responseText = geminiService.chat(activeSessionId, request.message)
-        return ChatResponse(responseText)
+        try {
+            // using name as session id for now
+            val response = geminiService.chat(authentication.name, request.message)
+            return ChatResponse(response)
+        } catch (e: Exception) {
+            logger.error("Error processing chat request", e)
+            throw e
+        }
     }
 }
