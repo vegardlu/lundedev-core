@@ -28,6 +28,9 @@ class HomeAssistantClient(
                 .retrieve()
                 .body(Array<EntityState>::class.java)
                 ?.toList()
+                ?.also { 
+                    logger.info("Fetched ${it.size} entities. First 5 inputs: ${it.take(5).map { e -> "${e.entity_id}=${e.state}" }}") 
+                }
                 ?: emptyList()
         } catch (e: Exception) {
             logger.error("Failed to fetch states from Home Assistant", e)

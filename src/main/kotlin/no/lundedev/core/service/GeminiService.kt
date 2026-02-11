@@ -97,7 +97,7 @@ class GeminiService(
             .build()
 
         model = GenerativeModel.Builder()
-            .setModelName("gemini-1.5-flash-001")
+            .setModelName("gemini-1.5-flash")
             .setVertexAi(vertexAi)
             .setTools(listOf(tool))
             .build()
