@@ -34,7 +34,8 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("io.mockk:mockk:1.13.10")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.junit.platform:junit-platform-launcher")
+    implementation("io.modelcontextprotocol:kotlin-sdk:0.8.3")
 }
 
 kotlin {
@@ -42,6 +43,7 @@ kotlin {
         freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
     }
 }
+
 
 tasks.withType<Test> {
     useJUnitPlatform()
