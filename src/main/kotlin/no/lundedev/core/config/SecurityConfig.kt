@@ -51,9 +51,10 @@ class SecurityConfig(
         http
             .authorizeHttpRequests { auth ->
                 auth
-                    .requestMatchers(*PUBLIC_ENDPOINTS).permitAll()
-                    .requestMatchers(*SWAGGER_ENDPOINTS).permitAll()
-                    .anyRequest().authenticated()
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+            .requestMatchers("/api/dashboard/**").authenticated()
+            .requestMatchers("/api/chat/**").authenticated() // Allow chat
+            .anyRequest().authenticated()
             }
             .csrf { it.disable() } // Disable CSRF for API consistency
             .cors { } // Enable CORS
