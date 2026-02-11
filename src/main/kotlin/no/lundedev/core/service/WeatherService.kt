@@ -46,7 +46,6 @@ class WeatherService(
                 precipitationAmount = current?.next_1_hours?.details?.precipitation_amount
             )
         } else {
-             // Fallback if fetch fails (could also return last known good value or error indication)
              WeatherDto(
                 location = location.name,
                 temperature = 0.0,
