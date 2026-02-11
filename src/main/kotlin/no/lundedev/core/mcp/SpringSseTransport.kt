@@ -62,7 +62,13 @@ class SpringSseTransport(
     }
 
     suspend fun handleMessage(message: String) {
-        val msg = json.decodeFromString<JSONRPCMessage>(message)
-        messageHandler?.invoke(msg)
+        try {
+            val msg = json.decodeFromString<JSONRPCMessage>(message)
+            messageHandler?.invoke(msg)
+        } catch (e: Exception) {
+            // Log error or ignore? 
+            // For now specific logging isn't set up, but preventing 500 is key.
+            println("Error handling message: ${e.message}")
+        }
     }
 }
