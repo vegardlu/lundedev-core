@@ -1,5 +1,4 @@
-package no.lundedev.core.service
-
+import com.fasterxml.jackson.annotation.JsonProperty
 import no.lundedev.core.integration.homeassistant.HomeAssistantClient
 import org.springframework.stereotype.Service
 
@@ -16,7 +15,7 @@ class LightService(
                 val friendlyName = entity.attributes["friendly_name"] as? String ?: entity.entity_id
                 val isOn = entity.state.equals("on", ignoreCase = true)
                 
-                logger.info("Light {} -> state='{}', parsedIsOn={}", entity.entity_id, entity.state, isOn)
+                logger.debug("Light {} -> state='{}', parsedIsOn={}", entity.entity_id, entity.state, isOn)
                 
                 LightDto(
                     id = entity.entity_id,
@@ -58,6 +57,7 @@ data class UpdateLightCommand(
 data class LightDto(
     val id: String,
     val name: String,
+    @JsonProperty("isOn")
     val isOn: Boolean,
     val brightness: Int? = null
 )
