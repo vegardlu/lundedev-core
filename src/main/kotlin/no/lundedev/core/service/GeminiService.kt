@@ -119,45 +119,48 @@ class GeminiService(
         
         // Loop to handle potential multiple function calls
         while (isFunctionCall(response)) {
-             // We only handle the first function call in the candidate for simplicity, 
-             // but candidates could theoretically have multiple parts (?) - usually one function call per turn.
-             val functionCall = response.candidatesList[0].content.partsList[0].functionCall
-             val functionName = functionCall.name
-             val args = functionCall.args.fieldsMap
-             
-             val toolResult = try {
-                 when (functionName) {
-                     "list_entities" -> {
-                         val domain = args["domain"]?.stringValue?.takeIf { it.isNotEmpty() }
-                         // Just joining with newline for cleaner prompt context
-                         homeAssistantMcpService.listEntities(domain).joinToString("\n")
+             val content = response.candidatesList[0].content
+             val functionCalls = content.partsList.filter { it.hasFunctionCall() }
+
+             val functionResponses = functionCalls.map { part ->
+                 val functionCall = part.functionCall
+                 val functionName = functionCall.name
+                 val args = functionCall.args.fieldsMap
+                 
+                 val toolResult = try {
+                     when (functionName) {
+                         "list_entities" -> {
+                             val domain = args["domain"]?.stringValue?.takeIf { it.isNotEmpty() }
+                             // Just joining with newline for cleaner prompt context
+                             homeAssistantMcpService.listEntities(domain).joinToString("\n")
+                         }
+                         "get_state" -> {
+                             val entityId = args["entity_id"]?.stringValue ?: ""
+                             homeAssistantMcpService.getState(entityId)?.toString() ?: "Entity not found"
+                         }
+                         "call_service" -> {
+                             val domain = args["domain"]?.stringValue ?: ""
+                             val service = args["service"]?.stringValue ?: ""
+                             val entityId = args["entity_id"]?.stringValue ?: ""
+                             val payloadJson = args["payload_json"]?.stringValue ?: "{}"
+                             
+                             val payload = JsonUtils.parseMap(payloadJson)
+                             
+                             homeAssistantMcpService.callService(domain, service, entityId, payload)
+                             "Service $domain.$service called for $entityId"
+                         }
+                         else -> "Unknown function $functionName"
                      }
-                     "get_state" -> {
-                         val entityId = args["entity_id"]?.stringValue ?: ""
-                         homeAssistantMcpService.getState(entityId)?.toString() ?: "Entity not found"
-                     }
-                     "call_service" -> {
-                         val domain = args["domain"]?.stringValue ?: ""
-                         val service = args["service"]?.stringValue ?: ""
-                         val entityId = args["entity_id"]?.stringValue ?: ""
-                         val payloadJson = args["payload_json"]?.stringValue ?: "{}"
-                         
-                         val payload = JsonUtils.parseMap(payloadJson)
-                         
-                         homeAssistantMcpService.callService(domain, service, entityId, payload)
-                         "Service $domain.$service called for $entityId"
-                     }
-                     else -> "Unknown function $functionName"
+                 } catch (e: Exception) {
+                     "Error executing tool: ${e.message}"
                  }
-             } catch (e: Exception) {
-                 "Error executing tool: ${e.message}"
+                 
+                 PartMaker.fromFunctionResponse(functionName, mapOf("result" to toolResult))
              }
              
-             // Send the tool result back to the model
+             // Send the tool results back to the model
              response = chat.sendMessage(
-                 ContentMaker.fromMultiModalData(
-                    PartMaker.fromFunctionResponse(functionName, mapOf("result" to toolResult))
-                 )
+                 ContentMaker.fromMultiModalData(*functionResponses.toTypedArray())
              )
         }
 
@@ -168,6 +171,6 @@ class GeminiService(
         if (response.candidatesList.isEmpty()) return false
         val content = response.candidatesList[0].content
         if (content.partsList.isEmpty()) return false
-        return content.partsList[0].hasFunctionCall()
+        return content.partsList.any { it.hasFunctionCall() }
     }
 }
