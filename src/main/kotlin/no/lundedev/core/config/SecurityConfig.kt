@@ -118,12 +118,15 @@ class SecurityConfig(
     private class DelegatingAuthenticationEntryPoint : org.springframework.security.web.AuthenticationEntryPoint {
         private val bearerEntryPoint = BearerTokenAuthenticationEntryPoint()
         private val loginEntryPoint = LoginUrlAuthenticationEntryPoint("/oauth2/authorization/google")
+        private val logger = org.slf4j.LoggerFactory.getLogger(DelegatingAuthenticationEntryPoint::class.java)
 
         override fun commence(
             request: jakarta.servlet.http.HttpServletRequest,
             response: jakarta.servlet.http.HttpServletResponse,
             authException: org.springframework.security.core.AuthenticationException
         ) {
+            logger.error("Authentication failed for path ${request.requestURI}: ${authException.message}", authException)
+            
             if (request.getHeader("Authorization")?.startsWith("Bearer ") == true) {
                 bearerEntryPoint.commence(request, response, authException)
             } else {
