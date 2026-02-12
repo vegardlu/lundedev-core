@@ -28,7 +28,7 @@ class McpRegistry(
         server.addTool(
             Tool(
                 name = "list_entities",
-                description = "List all entities, optionally filtered by domain",
+                description = "List all entities, optionally filtered by domain. Returns pipe-separated values: id|name|area|floor|state",
                 inputSchema = Tool.Input(
                     properties = buildJsonObject {
                         put("domain", buildJsonObject {

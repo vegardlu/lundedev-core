@@ -34,7 +34,7 @@ class GeminiService(
         
         val listEntitiesFunc = FunctionDeclaration.newBuilder()
             .setName("list_entities")
-            .setDescription("List all available entities (devices) in the home, optionally filtered by domain.")
+            .setDescription("List all available entities in the home with details (id|name|area|floor|state).")
             .setParameters(
                 Schema.newBuilder()
                     .setType(Type.OBJECT)

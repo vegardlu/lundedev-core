@@ -38,6 +38,21 @@ class HomeAssistantClient(
         }
     }
 
+    fun renderTemplate(template: String): String {
+        logger.debug("Rendering template in Home Assistant: {}", template)
+        return try {
+            client.post()
+                .uri("/api/template")
+                .body(mapOf("template" to template))
+                .retrieve()
+                .body(String::class.java)
+                ?: ""
+        } catch (e: Exception) {
+            logger.error("Failed to render template in Home Assistant", e)
+            ""
+        }
+    }
+
     fun callService(domain: String, service: String, entityId: String, data: Map<String, Any> = emptyMap()) {
         logger.info("Calling service {}.{} for entity {}", domain, service, entityId)
         try {
