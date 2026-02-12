@@ -24,5 +24,5 @@ description: Deploy lundedev-core to production.
 
 5. Deploy on server.
     ```bash
-    ssh lundedev "cd /home/vegard/homelab/lundedev-core && git pull && docker compose up -d --build"
+    ssh lundedev "cd /home/vegard/homelab/lundedev-core && git pull && docker compose pull && docker compose up -d"
     ```
