@@ -7,15 +7,21 @@ import org.springframework.stereotype.Service
 class LightService(
     private val homeAssistantClient: HomeAssistantClient
 ) {
+    private val logger = org.slf4j.LoggerFactory.getLogger(LightService::class.java)
+
     fun getLights(): List<LightDto> {
         return homeAssistantClient.getStates()
             .filter { it.entity_id.startsWith("light.") }
             .map { entity ->
                 val friendlyName = entity.attributes["friendly_name"] as? String ?: entity.entity_id
+                val isOn = entity.state.equals("on", ignoreCase = true)
+                
+                logger.debug("Light {} state: raw='{}', parsedIsOn={}", entity.entity_id, entity.state, isOn)
+                
                 LightDto(
                     id = entity.entity_id,
                     name = friendlyName,
-                    isOn = entity.state == "on",
+                    isOn = isOn,
                     brightness = (entity.attributes["brightness"] as? Number)?.toInt()
                 )
             }
