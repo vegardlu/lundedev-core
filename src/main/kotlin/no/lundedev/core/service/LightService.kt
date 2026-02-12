@@ -16,7 +16,7 @@ class LightService(
                 val friendlyName = entity.attributes["friendly_name"] as? String ?: entity.entity_id
                 val isOn = entity.state.equals("on", ignoreCase = true)
                 
-                logger.debug("Light {} state: raw='{}', parsedIsOn={}", entity.entity_id, entity.state, isOn)
+                logger.info("Light {} -> state='{}', parsedIsOn={}", entity.entity_id, entity.state, isOn)
                 
                 LightDto(
                     id = entity.entity_id,
