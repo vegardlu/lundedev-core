@@ -106,8 +106,14 @@ class SecurityConfig(
 
     private fun audienceValidator(): OAuth2TokenValidator<Jwt> {
         val allowedAudiences = securityProperties.allowedClientIds.toSet()
+        val logger = org.slf4j.LoggerFactory.getLogger(SecurityConfig::class.java)
+        
         return JwtClaimValidator<List<String>>("aud") { audiences ->
-            audiences != null && audiences.any { it in allowedAudiences }
+            val match = audiences != null && audiences.any { it in allowedAudiences }
+            if (!match) {
+                logger.warn("JWT Audience mismatch! Expected one of: $allowedAudiences, but Token had: $audiences")
+            }
+            match
         }
     }
 
