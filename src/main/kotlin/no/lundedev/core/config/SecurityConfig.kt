@@ -108,10 +108,15 @@ class SecurityConfig(
         val allowedAudiences = securityProperties.allowedClientIds.toSet()
         val logger = org.slf4j.LoggerFactory.getLogger(SecurityConfig::class.java)
         
+        println("DEBUG: SecurityConfig initialized with allowedAudiences: $allowedAudiences")
+
         return JwtClaimValidator<List<String>>("aud") { audiences ->
+            println("DEBUG: Validating JWT audiences: $audiences against allowed: $allowedAudiences")
+            
             val match = audiences != null && audiences.any { it in allowedAudiences }
             if (!match) {
                 logger.warn("JWT Audience mismatch! Expected one of: $allowedAudiences, but Token had: $audiences")
+                println("DEBUG: JWT Audience mismatch! Expected one of: $allowedAudiences, but Token had: $audiences")
             }
             match
         }
