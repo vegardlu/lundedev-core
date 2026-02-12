@@ -1,3 +1,5 @@
+package no.lundedev.core.service
+
 import com.fasterxml.jackson.annotation.JsonProperty
 import no.lundedev.core.integration.homeassistant.HomeAssistantClient
 import org.springframework.stereotype.Service
