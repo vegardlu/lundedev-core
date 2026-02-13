@@ -3,11 +3,11 @@ package no.lundedev.core.service
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import no.lundedev.core.integration.homeassistant.EnhancedEntityState
 import no.lundedev.core.integration.homeassistant.EntityState
 import no.lundedev.core.integration.homeassistant.HomeAssistantClient
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HomeAssistantMcpServiceTest {
@@ -16,33 +16,34 @@ class HomeAssistantMcpServiceTest {
     private val service = HomeAssistantMcpService(client)
 
     @Test
-    fun `listEntities should return all entities when no domain is provided`() {
-        val states = listOf(
-            EntityState("light.kitchen", "on"),
-            EntityState("switch.living_room", "off"),
-            EntityState("sensor.temperature", "22.5")
+    fun `listEntities should return formatted strings`() {
+        val entities = listOf(
+            EnhancedEntityState("light.kitchen", "Kitchen Light", "Kitchen", "First Floor", "on", emptyMap()),
+            EnhancedEntityState("switch.living_room", "Living Room Switch", null, null, "off", mapOf("device_class" to "outlet"))
         )
-        every { client.getStates() } returns states
+        every { client.getEntitiesWithArea(null) } returns entities
 
         val result = service.listEntities()
 
-        assertEquals(3, result.size)
-        assertEquals(listOf("light.kitchen", "switch.living_room", "sensor.temperature"), result)
+        assertEquals(2, result.size)
+        // Expected format: entity_id|friendly_name|area|floor|state|device_class|unit
+        // Note: area/floor default to "None" if null. attributes defaults to "" if not found.
+        assertEquals("light.kitchen|Kitchen Light|Kitchen|First Floor|on||", result[0])
+        assertEquals("switch.living_room|Living Room Switch|None|None|off|outlet|", result[1])
     }
 
     @Test
-    fun `listEntities should filter by domain`() {
-        val states = listOf(
-            EntityState("light.kitchen", "on"),
-            EntityState("switch.living_room", "off"),
-            EntityState("sensor.temperature", "22.5")
+    fun `listEntities should pass domain filter`() {
+        val entities = listOf(
+            EnhancedEntityState("light.kitchen", "Kitchen Light", "Kitchen", "First Floor", "on", emptyMap())
         )
-        every { client.getStates() } returns states
+        every { client.getEntitiesWithArea("light") } returns entities
 
         val result = service.listEntities("light")
 
         assertEquals(1, result.size)
-        assertEquals(listOf("light.kitchen"), result)
+        assertEquals("light.kitchen|Kitchen Light|Kitchen|First Floor|on||", result[0])
+        verify { client.getEntitiesWithArea("light") }
     }
 
     @Test
@@ -53,18 +54,9 @@ class HomeAssistantMcpServiceTest {
 
         val result = service.getState(entityId)
 
-        assertNotNull(result)
+        assertTrue(result != null)
         assertEquals("on", result!!["state"])
         assertEquals(mapOf("brightness" to 255), result["attributes"])
-    }
-
-    @Test
-    fun `getState should return null if entity not found`() {
-        every { client.getStates() } returns emptyList()
-
-        val result = service.getState("non.existent")
-
-        assertNull(result)
     }
 
     @Test

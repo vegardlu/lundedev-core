@@ -40,38 +40,46 @@ class HomeAssistantClient(
 
     fun getEntitiesWithArea(domain: String? = null): List<EnhancedEntityState> {
         val template = """
-            {% for state in states ${if (domain != null) "if state.entity_id.startswith('$domain.')" else ""} -%}
-            {{ state.entity_id }}|{{ state.name }}|{{ area_name(state.entity_id) }}|{{ floor_name(state.entity_id) }}|{{ state.state }}|{{ state.attributes | to_json }}
-            {% endfor %}
+            [
+            {%- for state in states ${if (domain != null) "if state.entity_id.startswith('$domain.')" else ""} -%}
+            {
+              "entity_id": {{ state.entity_id | to_json }},
+              "friendly_name": {{ state.name | to_json }},
+              "area": {{ area_name(state.entity_id) | to_json }},
+              "floor": {{ floor_name(state.entity_id) | to_json }},
+              "state": {{ state.state | to_json }},
+              "attributes": {{ state.attributes | to_json }}
+            }{% if not loop.last %},{% endif %}
+            {%- endfor -%}
+            ]
         """.trimIndent()
 
         val rendered = renderTemplate(template)
         
         if (rendered.isBlank()) return emptyList()
 
-        return rendered.lines()
-            .filter { it.isNotBlank() }
-            .mapNotNull { line ->
-                val parts = line.split("|")
-                if (parts.size >= 6) {
-                    val attributesJson = parts.drop(5).joinToString("|") // Rejoin in case attributes contain pipes
-                    val attributes = try {
-                        val mapper = com.fasterxml.jackson.databind.ObjectMapper()
-                        mapper.readValue(attributesJson, Map::class.java) as Map<String, Any?>
-                    } catch (e: Exception) {
-                        emptyMap<String, Any?>()
-                    }
-
+        return try {
+            val mapper = com.fasterxml.jackson.databind.ObjectMapper()
+            val typeRef = object : com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Any?>>>() {}
+            val rawList = mapper.readValue(rendered, typeRef)
+            
+            rawList.mapNotNull { data ->
+                val entityId = data["entity_id"] as? String
+                if (entityId != null) {
                     EnhancedEntityState(
-                        entity_id = parts[0],
-                        friendly_name = parts[1],
-                        area = parts[2].takeIf { it != "None" && it != "unknown" },
-                        floor = parts[3].takeIf { it != "None" && it != "unknown" },
-                        state = parts[4],
-                        attributes = attributes
+                        entity_id = entityId,
+                        friendly_name = (data["friendly_name"] as? String) ?: entityId,
+                        area = (data["area"] as? String)?.takeIf { it != "None" && it != "unknown" },
+                        floor = (data["floor"] as? String)?.takeIf { it != "None" && it != "unknown" },
+                        state = (data["state"] as? String) ?: "unknown",
+                        attributes = (data["attributes"] as? Map<String, Any?>) ?: emptyMap()
                     )
                 } else null
             }
+        } catch (e: Exception) {
+            logger.error("Failed to parse entities JSON from Home Assistant", e)
+            emptyList()
+        }
     }
 
     fun renderTemplate(template: String): String {
