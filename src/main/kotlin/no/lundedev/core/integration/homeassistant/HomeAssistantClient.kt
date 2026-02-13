@@ -57,9 +57,12 @@ class HomeAssistantClient(
 
     fun getEntitiesWithArea(domain: String? = null, area: String? = null): List<EnhancedEntityState> {
         val domainFilter = if (domain != null) "if state.entity_id.startswith('$domain.')" else ""
-        // Logic: case-insensitive match for area name. convert both to lower() in jinja.
-        // We use `area_name(state.entity_id)` and handle if it is None by defaulting to empty string before lower()
-        val areaFilter = if (area != null) "if (area_name(state.entity_id) or '').lower() == '${area.lowercase()}'" else ""
+        // Logic: case-insensitive match for area name OR area_id. 
+        // We check if the provided 'area' matches either area_name(entity_id) OR area_id(entity_id).
+        val areaFilter = if (area != null) {
+            val lowerArea = area.lowercase()
+            "if (area_name(state.entity_id) or '').lower() == '$lowerArea' or (area_id(state.entity_id) or '').lower() == '$lowerArea'"
+        } else ""
         
         // Combine filters. If both exist, we need 'and'.
         val filters = listOf(domainFilter, areaFilter).filter { it.isNotEmpty() }.joinToString(" and ")
