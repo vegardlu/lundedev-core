@@ -14,7 +14,7 @@ class LightService(
         // Use a template to get all details in one request, including area and floor which aren't in standard state attributes
         val template = """
             {% for state in states.light -%}
-            {{ state.entity_id }}|{{ state.name }}|{{ area_name(state.entity_id) }}|{{ floor_name(state.entity_id) }}|{{ state.state }}|{{ state.attributes.brightness }}
+            {{ state.entity_id }}|{{ state.name }}|{{ area_name(state.entity_id) }}|{{ floor_name(state.entity_id) }}|{{ state.state }}|{{ state.attributes.brightness }}|{{ state.attributes.supported_color_modes | to_json }}
             {% endfor %}
         """.trimIndent()
 
@@ -34,9 +34,20 @@ class LightService(
                         val floor = parts[3].takeIf { it != "None" && it != "unknown" }
                         val state = parts[4]
                         val brightness = parts.getOrNull(5)?.takeIf { it != "None" && it != "unknown" }?.toIntOrNull()
+                        val supportedColorModesString = parts.getOrNull(6)?.takeIf { it != "None" && it != "unknown" } ?: "[]"
                         val isOn = state.equals("on", ignoreCase = true)
 
-                        LightDto(id, name, isOn, brightness, area, floor)
+                        val supportedColorModes = try {
+                            // Simple manual parsing of JSON array string ["hs", "color_temp"] -> list
+                            supportedColorModesString.removeSurrounding("[", "]")
+                                .split(",")
+                                .map { it.trim().removeSurrounding("\"") }
+                                .filter { it.isNotBlank() }
+                        } catch (e: Exception) {
+                            emptyList<String>()
+                        }
+
+                        LightDto(id, name, isOn, brightness, area, floor, supportedColorModes)
                     } else {
                         null
                     }
@@ -82,5 +93,6 @@ data class LightDto(
     val isOn: Boolean,
     val brightness: Int? = null,
     val area: String? = null,
-    val floor: String? = null
+    val floor: String? = null,
+    val supportedColorModes: List<String> = emptyList()
 )
