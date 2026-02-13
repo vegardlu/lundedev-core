@@ -8,22 +8,12 @@ class HomeAssistantMcpService(
     private val homeAssistantClient: HomeAssistantClient
 ) {
     fun listEntities(domain: String? = null): List<String> {
-        val template = """
-            {% for state in states ${if (domain != null) "if state.entity_id.startswith('$domain.')" else ""} -%}
-            {{ state.entity_id }}|{{ state.name }}|{{ area_name(state.entity_id) }}|{{ floor_name(state.entity_id) }}|{{ state.state }}
-            {% endfor %}
-        """.trimIndent()
-
-        val rendered = homeAssistantClient.renderTemplate(template)
-        
-        if (rendered.isBlank()) {
-            // Fallback to basic list if template rendering fails or returns empty
-            return homeAssistantClient.getStates()
-                .filter { domain == null || it.entity_id.startsWith("$domain.") }
-                .map { it.entity_id }
-        }
-
-        return rendered.lines().filter { it.isNotBlank() }
+        return homeAssistantClient.getEntitiesWithArea(domain)
+            .map { entity ->
+                val deviceClass = entity.attributes["device_class"] ?: ""
+                val unit = entity.attributes["unit_of_measurement"] ?: ""
+                "${entity.entity_id}|${entity.friendly_name}|${entity.area ?: "None"}|${entity.floor ?: "None"}|${entity.state}|$deviceClass|$unit"
+            }
     }
 
     fun getState(entityId: String): Map<String, Any?>? {

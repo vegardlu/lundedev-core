@@ -38,6 +38,42 @@ class HomeAssistantClient(
         }
     }
 
+    fun getEntitiesWithArea(domain: String? = null): List<EnhancedEntityState> {
+        val template = """
+            {% for state in states ${if (domain != null) "if state.entity_id.startswith('$domain.')" else ""} -%}
+            {{ state.entity_id }}|{{ state.name }}|{{ area_name(state.entity_id) }}|{{ floor_name(state.entity_id) }}|{{ state.state }}|{{ state.attributes | to_json }}
+            {% endfor %}
+        """.trimIndent()
+
+        val rendered = renderTemplate(template)
+        
+        if (rendered.isBlank()) return emptyList()
+
+        return rendered.lines()
+            .filter { it.isNotBlank() }
+            .mapNotNull { line ->
+                val parts = line.split("|")
+                if (parts.size >= 6) {
+                    val attributesJson = parts.drop(5).joinToString("|") // Rejoin in case attributes contain pipes
+                    val attributes = try {
+                        val mapper = com.fasterxml.jackson.databind.ObjectMapper()
+                        mapper.readValue(attributesJson, Map::class.java) as Map<String, Any?>
+                    } catch (e: Exception) {
+                        emptyMap<String, Any?>()
+                    }
+
+                    EnhancedEntityState(
+                        entity_id = parts[0],
+                        friendly_name = parts[1],
+                        area = parts[2].takeIf { it != "None" && it != "unknown" },
+                        floor = parts[3].takeIf { it != "None" && it != "unknown" },
+                        state = parts[4],
+                        attributes = attributes
+                    )
+                } else null
+            }
+    }
+
     fun renderTemplate(template: String): String {
         logger.debug("Rendering template in Home Assistant: {}", template)
         return try {
@@ -73,4 +109,13 @@ data class EntityState(
     val entity_id: String,
     val state: String,
     val attributes: Map<String, Any?> = emptyMap()
+)
+
+data class EnhancedEntityState(
+    val entity_id: String,
+    val friendly_name: String,
+    val area: String?,
+    val floor: String?,
+    val state: String,
+    val attributes: Map<String, Any?>
 )
