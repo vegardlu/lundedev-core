@@ -107,4 +107,85 @@ class HomeAssistantCache(
             matchDomain && matchArea
         }
     }
+    /**
+     * Smart search with scoring and synonyms.
+     * Supports multi-term queries (e.g., "stua lys") and synonyms.
+     */
+    fun search(query: String): List<EnhancedEntityState> {
+        val normalizedQuery = query.lowercase().replace("_", " ").trim()
+        if (normalizedQuery.isBlank()) return emptyList()
+
+        // 1. Tokenize & Expand query with synonyms
+        val searchTerms = expandSynonyms(normalizedQuery)
+
+        // 2. Score all entities
+        val scoredEntities = getAllEntities().map { entity ->
+            val score = calculateScore(entity, searchTerms, normalizedQuery)
+            entity to score
+        }
+
+        // 3. Filter and Sort
+        return scoredEntities
+            .filter { it.second > 0 }
+            .sortedByDescending { it.second } // Highest score first
+            .take(15) // Return top 15 matches
+            .map { it.first }
+    }
+
+    private fun expandSynonyms(query: String): Set<String> {
+        // Tokenize the input string by spaces to handle multi-word queries
+        val rawTerms = query.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        val terms = rawTerms.toMutableSet()
+        
+        // Simple manual map remains helpful as a base, but the AI is expected to provide translations too.
+        val mappings = mapOf(
+            "stua" to listOf("living room", "living"),
+            "kjøkken" to listOf("kitchen"),
+            "soverom" to listOf("bedroom"),
+            "bad" to listOf("bathroom"),
+            "gang" to listOf("hallway", "entrance"),
+            "lys" to listOf("light", "switch", "dimmer"),
+            "varme" to listOf("climate", "thermostat", "temperature"),
+            "gardiner" to listOf("cover", "blind")
+        )
+
+        mappings.forEach { (norwegian, englishList) ->
+            // Check if any token matches the Norwegian key
+            if (rawTerms.any { it == norwegian }) {
+                terms.addAll(englishList)
+            }
+        }
+        return terms
+    }
+
+    private fun calculateScore(entity: EnhancedEntityState, searchTerms: Set<String>, originalQuery: String): Int {
+        var score = 0
+        val id = entity.entity_id.lowercase().replace("_", " ")
+        val name = entity.friendly_name.lowercase()
+        val areaId = entity.area_id?.lowercase()?.replace("_", " ") ?: ""
+        val areaName = entity.area?.lowercase() ?: ""
+
+        // Exact ID match is golden (e.g., user asks for specific ID)
+        if (id == originalQuery) score += 200
+        if (name == originalQuery) score += 150
+        
+        // Check against all expanded terms (synonyms & tokens)
+        for (term in searchTerms) {
+            // Area matching is extremely high value for context ("lights in living room")
+            if (areaId == term || areaName == term) score += 80
+            else if (areaId.contains(term) || areaName.contains(term)) score += 40
+
+            // Entity Name/ID matching
+            if (id.contains(term)) score += 50
+            if (name.contains(term)) score += 50
+            
+            // Domain specific boost if user asks for generic types
+            // e.g. term="light" and entity is "light.living_room" -> boost
+            if (entity.entity_id.startsWith(term)) score += 20
+        }
+
+        return score
+    }
+
+
 }

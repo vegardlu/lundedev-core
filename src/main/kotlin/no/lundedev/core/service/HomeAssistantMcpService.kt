@@ -12,7 +12,7 @@ class HomeAssistantMcpService(
 ) {
     fun listEntities(domain: String? = null, area: String? = null): List<String> {
         return homeAssistantCache.getEntities(domain, area)
-            .map { entity ->
+            .map { entity: EnhancedEntityState ->
                 val deviceClass = entity.attributes["device_class"] ?: ""
                 val unit = entity.attributes["unit_of_measurement"] ?: ""
                 "${entity.entity_id}|${entity.friendly_name}|${entity.area ?: "None"}|${entity.floor ?: "None"}|${entity.state}|$deviceClass|$unit"
@@ -31,6 +31,15 @@ class HomeAssistantMcpService(
                 "attributes" to it.attributes
             )
         }
+    }
+
+    fun searchEntities(query: String): List<String> {
+        return homeAssistantCache.search(query)
+            .map { entity: EnhancedEntityState ->
+                val deviceClass = entity.attributes["device_class"] ?: ""
+                val unit = entity.attributes["unit_of_measurement"] ?: ""
+                "${entity.entity_id}|${entity.friendly_name}|${entity.area ?: "None"}|${entity.floor ?: "None"}|${entity.state}|$deviceClass|$unit"
+            }
     }
 
     fun callService(domain: String, service: String, entityId: String, payload: Map<String, Any> = emptyMap()) {
