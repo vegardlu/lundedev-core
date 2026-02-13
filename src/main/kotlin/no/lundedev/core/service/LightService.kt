@@ -11,20 +11,39 @@ class LightService(
     private val logger = org.slf4j.LoggerFactory.getLogger(LightService::class.java)
 
     fun getLights(): List<LightDto> {
-        return homeAssistantClient.getStates()
-            .filter { it.entity_id.startsWith("light.") }
-            .map { entity ->
-                val friendlyName = entity.attributes["friendly_name"] as? String ?: entity.entity_id
-                val isOn = entity.state.equals("on", ignoreCase = true)
-                
-                logger.debug("Light {} -> state='{}', parsedIsOn={}", entity.entity_id, entity.state, isOn)
-                
-                LightDto(
-                    id = entity.entity_id,
-                    name = friendlyName,
-                    isOn = isOn,
-                    brightness = (entity.attributes["brightness"] as? Number)?.toInt()
-                )
+        // Use a template to get all details in one request, including area and floor which aren't in standard state attributes
+        val template = """
+            {% for state in states.light -%}
+            {{ state.entity_id }}|{{ state.name }}|{{ area_name(state.entity_id) }}|{{ floor_name(state.entity_id) }}|{{ state.state }}|{{ state.attributes.brightness }}
+            {% endfor %}
+        """.trimIndent()
+
+        val rendered = homeAssistantClient.renderTemplate(template)
+        
+        if (rendered.isBlank()) return emptyList()
+
+        return rendered.lines()
+            .filter { it.isNotBlank() }
+            .mapNotNull { line ->
+                try {
+                    val parts = line.split("|")
+                    if (parts.size >= 5) {
+                        val id = parts[0]
+                        val name = parts[1]
+                        val area = parts[2].takeIf { it != "None" && it != "unknown" }
+                        val floor = parts[3].takeIf { it != "None" && it != "unknown" }
+                        val state = parts[4]
+                        val brightness = parts.getOrNull(5)?.takeIf { it != "None" && it != "unknown" }?.toIntOrNull()
+                        val isOn = state.equals("on", ignoreCase = true)
+
+                        LightDto(id, name, isOn, brightness, area, floor)
+                    } else {
+                        null
+                    }
+                } catch (e: Exception) {
+                    logger.error("Failed to parse light line: {}", line, e)
+                    null
+                }
             }
     }
     fun toggleLight(id: String) {
@@ -61,5 +80,7 @@ data class LightDto(
     val name: String,
     @JsonProperty("isOn")
     val isOn: Boolean,
-    val brightness: Int? = null
+    val brightness: Int? = null,
+    val area: String? = null,
+    val floor: String? = null
 )
