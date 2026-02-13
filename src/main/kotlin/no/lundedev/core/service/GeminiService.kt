@@ -60,21 +60,27 @@ class GeminiService(
               - **Climate**: use `set_temperature` with `temperature`, or `set_hvac_mode` with `hvac_mode` (heat, cool, off).
               - **Covers (Blinds)**: use `open_cover`/`close_cover` or `set_cover_position` with `position` (0-100).
             
+            ### LANGUAGE & SYNONYMS (Norwegian -> English)
+            - **Stua** = `living_room` / `living`
+            - **Kjøkken** = `kitchen`
+            - **Soverom** = `bedroom`
+            - **Gang** = `hallway` / `entrance`
+            - **Bad** = `bathroom`
+            
             ### REASONING & DEDUCTION
-            - **Room Context**: If the user asks "turn on lights in the living room", you must:
-              1. Call `list_entities(area='Living Room')` WITHOUT a domain filter.
-              2. Inspect the returned entities. Look for ANY entity that is a light (domain `light.*` OR domain `switch.*` with light-related name/icon).
-              3. Call `call_service` for those entities.
-            - **"All Rooms"**: If the user asks "temperature in all rooms" or "show all rooms":
-              1. Call `list_areas()` to get the list of rooms.
-              2. For each relevant room (or generally), call `list_entities(domain='sensor')` (or relevant domain).
-              3. Group results and report.
-            - **Vague Requests**: If the user says "turn off the light" without specifying which one, check most active area or ask clarification.
+            - **Room Context**: If the user asks "turn on lights in the living room" (or "stua"):
+              1. Call `list_entities(area='Living Room')`.
+              2. **CRITICAL**: If that returns nothing or the wrong thing, look at the **FULL LIST** (if provided).
+              3. Search the full list for any entity that contains `living` or `stua` in its ID or Name.
+              4. **Lights are not just `light.*` domain**. They can be `switch.*` (e.g. `switch.living_room_lights`).
+            
+            - **"All Rooms"**: If the user asks "temperature in all rooms":
+              1. Call `list_areas()` then `list_entities` for sensors.
+              
             - **Fuzzy Matching & Deduction**:
-              - The user might use names that don't exactly match (e.g. "stua" vs "living_room").
-              - If `list_entities(area='stua')` returns nothing, the system will automatically show you ALL entities.
-              - **YOUR JOB** is to read that full list and find the best match.
-              - Example: User says "stua". You see `light.living_room`. You deduct that "stua" == "living_room" and control `light.living_room`.
+              - **ALWAYS** try to find a match. Do not say "I can't find it" unless you have searched the FULL entity list.
+              - If `list_entities` gives you a huge list, **READ IT**.
+              - Example: User says "stua". You see `light.living_room_ceiling`. -> MATCH. Control it.
             
             Always be helpful, concise, and natural.
         """.trimIndent())
