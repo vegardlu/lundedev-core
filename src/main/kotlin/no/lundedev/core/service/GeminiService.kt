@@ -32,15 +32,57 @@ class GeminiService(
     fun init() {
         vertexAi = VertexAI(projectId, location)
         
+        val systemInstruction = ContentMaker.fromString("""
+            You are a smart home assistant for the 'Lundedev' home.
+            Your goal is to help the user control their home and get information about it.
+            
+            ### TOOLS & DATA FORMAT
+            You have access to tools to interact with Home Assistant.
+            
+            1. `list_entities(domain: String?)`: 
+               - Returns a list of entities in the format: `entity_id|friendly_name|area|floor|state|device_class|unit`.
+               - Example output: `light.kitchen_ceiling|Kitchen Ceiling Light|Kitchen|1st Floor|on|light|`
+               - USE THIS to find entity IDs when the user asks about a room or a device name.
+               
+            2. `get_state(entity_id: String)`:
+               - Returns detailed state and attributes for a specific entity.
+               
+            3. `call_service(domain, service, entity_id, payload_json)`:
+               - Controls devices. Common services: `turn_on`, `turn_off`, `toggle`.
+            
+            ### REASONING & DEDUCTION
+            - **Room Context**: If the user asks "turn on lights in the living room", you must:
+              1. Call `list_entities(domain='light')`.
+              2. Filter the results where `area` is 'Living Room' (or similar).
+              3. Call `call_service` for EACH matching entity.
+            - **"All Rooms"**: If the user asks "temperature in all rooms":
+              1. Call `list_entities(domain='sensor')`.
+              2. Filter for temperature sensors (look at device_class or unit).
+              3. Group the results by `area` and report the temperature for each room.
+            - **Vague Requests**: If the user says "turn off the light" without specifying which one, look for lights that are currently 'on' in the most likely area or ask for clarification listing the active lights.
+            - **Entity IDs**: NEVER ask the user for an `entity_id`. It is your job to find it using `list_entities`.
+            
+            Always be helpful, concise, and natural.
+        """.trimIndent())
+
+        model = GenerativeModel.Builder()
+            .setModelName("gemini-2.5-flash")
+            .setVertexAi(vertexAi)
+            .setTools(listOf(getTools()))
+            .setSystemInstruction(systemInstruction)
+            .build()
+    }
+    
+    private fun getTools(): Tool {
         val listEntitiesFunc = FunctionDeclaration.newBuilder()
             .setName("list_entities")
-            .setDescription("List all available entities in the home with details (id|name|area|floor|state).")
+            .setDescription("List all available entities in the home with details (id|name|area|floor|state|device_class|unit).")
             .setParameters(
                 Schema.newBuilder()
                     .setType(Type.OBJECT)
                     .putProperties("domain", Schema.newBuilder()
                         .setType(Type.STRING)
-                        .setDescription("The domain to filter by (e.g., 'light', 'switch').")
+                        .setDescription("The domain to filter by (e.g., 'light', 'switch', 'sensor').")
                         .build())
                     .build()
             )
@@ -89,17 +131,11 @@ class GeminiService(
                     .build()
             )
             .build()
-
-        val tool = Tool.newBuilder()
+            
+        return Tool.newBuilder()
             .addFunctionDeclarations(listEntitiesFunc)
             .addFunctionDeclarations(getStateFunc)
             .addFunctionDeclarations(callServiceFunc)
-            .build()
-
-        model = GenerativeModel.Builder()
-            .setModelName("gemini-2.5-flash")
-            .setVertexAi(vertexAi)
-            .setTools(listOf(tool))
             .build()
     }
 
