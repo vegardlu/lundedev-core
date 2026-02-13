@@ -75,4 +75,18 @@ class HomeAssistantCacheTest {
         assertEquals(1, results.size)
         assertEquals("light.living", results[0].entity_id)
     }
+
+    @Test
+    fun `getEntities should match area id with spaces`() {
+        val entities = listOf(
+            EnhancedEntityState("light.living", "Living Light", "living_room", "Living Room", "First Floor", "on", emptyMap())
+        )
+        every { client.getEntitiesWithArea(null, null) } returns entities
+        cache.refreshCache()
+
+        // Searching for "living room" should match area_id "living_room" due to normalization
+        val results = cache.getEntities(area = "living room")
+        assertEquals(1, results.size)
+        assertEquals("light.living", results[0].entity_id)
+    }
 }

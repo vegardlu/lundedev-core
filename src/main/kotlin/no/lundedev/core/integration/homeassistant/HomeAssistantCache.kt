@@ -96,9 +96,9 @@ class HomeAssistantCache(
             val matchArea = if (area == null) {
                 true
             } else {
-                val lowerArea = area.lowercase()
-                val entityAreaName = entity.area?.lowercase()
-                val entityAreaId = entity.area_id?.lowercase()
+                val lowerArea = area.lowercase().replace("_", " ")
+                val entityAreaName = entity.area?.lowercase()?.replace("_", " ")
+                val entityAreaId = entity.area_id?.lowercase()?.replace("_", " ")
                 
                 // Match if EITHER area_name OR area_id matches the query
                 (entityAreaName == lowerArea) || (entityAreaId == lowerArea)
