@@ -70,7 +70,11 @@ class GeminiService(
               2. For each relevant room (or generally), call `list_entities(domain='sensor')` (or relevant domain).
               3. Group results and report.
             - **Vague Requests**: If the user says "turn off the light" without specifying which one, check most active area or ask clarification.
-            - **"Make it cozy"**: Infer meaning -> dim lights, close blinds.
+            - **Fuzzy Matching & Deduction**:
+              - The user might use names that don't exactly match (e.g. "stua" vs "living_room").
+              - If `list_entities(area='stua')` returns nothing, the system will automatically show you ALL entities.
+              - **YOUR JOB** is to read that full list and find the best match.
+              - Example: User says "stua". You see `light.living_room`. You deduct that "stua" == "living_room" and control `light.living_room`.
             
             Always be helpful, concise, and natural.
         """.trimIndent())
@@ -91,17 +95,17 @@ class GeminiService(
 
         val listEntitiesFunc = FunctionDeclaration.newBuilder()
             .setName("list_entities")
-            .setDescription("List all available entities in the home with details (id|name|area|floor|state|device_class|unit).")
+            .setDescription("List entities. If you filter by area/domain and nothing is found, I will return ALL entities so you can find it yourself.")
             .setParameters(
                 Schema.newBuilder()
                     .setType(Type.OBJECT)
                     .putProperties("domain", Schema.newBuilder()
                         .setType(Type.STRING)
-                        .setDescription("Optional domain filter (e.g., 'light', 'switch').")
+                        .setDescription("Optional domain filter.")
                         .build())
                     .putProperties("area", Schema.newBuilder()
                         .setType(Type.STRING)
-                        .setDescription("Optional area name filter (e.g., 'Living Room'). Use this to find everything in a room.")
+                        .setDescription("Optional area filter.")
                         .build())
                     .build()
             )
@@ -191,7 +195,17 @@ class GeminiService(
                          "list_entities" -> {
                              val domain = args["domain"]?.stringValue?.takeIf { it.isNotEmpty() }
                              val area = args["area"]?.stringValue?.takeIf { it.isNotEmpty() }
-                             homeAssistantMcpService.listEntities(domain, area).joinToString("\n")
+                             
+                             var result = homeAssistantMcpService.listEntities(domain, area)
+                             
+                             // FALLBACK: If specific search yielded nothing, give the AI everything
+                             if (result.isEmpty() && (domain != null || area != null)) {
+                                 val allEntities = homeAssistantMcpService.listEntities(null, null)
+                                 "No entities found with filter [domain=$domain, area=$area]. Here is the COMPLETE list of entities. Please check this list to find what the user meant:\n" + 
+                                 allEntities.joinToString("\n")
+                             } else {
+                                 result.joinToString("\n")
+                             }
                          }
                          "get_state" -> {
                              val entityId = args["entity_id"]?.stringValue ?: ""
