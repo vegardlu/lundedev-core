@@ -46,8 +46,8 @@ class GeminiService(
             2. `list_entities(domain: String?, area: String?)`: 
                - Returns a list of entities.
                - text format: `entity_id|friendly_name|area|floor|state|device_class|unit`.
-               - `area`: Filter by exact area name (e.g. "Living Room"). THIS IS PREFERRED over client-side filtering.
-               - `domain`: Optional filter (e.g., 'light', 'switch').
+               - `area`: Filter by area name (e.g. "Living Room"). Case-insensitive.
+               - `domain`: Optional filter. AVOID using this if you are looking for "lights" in a room, because some lights are `switch` entities. Just perform `list_entities(area='...')` and check the names/types yourself.
                
             3. `get_state(entity_id: String)`:
                - Returns detailed state and attributes.
@@ -57,7 +57,7 @@ class GeminiService(
             
             ### REASONING & DEDUCTION
             - **Room Context**: If the user asks "turn on lights in the living room", you must:
-              1. Call `list_entities(area='Living Room')` (or check `list_areas()` if unsure of name).
+              1. Call `list_entities(area='Living Room')` WITHOUT a domain filter.
               2. Inspect the returned entities. Look for ANY entity that is a light (domain `light.*` OR domain `switch.*` with light-related name/icon).
               3. Call `call_service` for those entities.
             - **"All Rooms"**: If the user asks "temperature in all rooms" or "show all rooms":
