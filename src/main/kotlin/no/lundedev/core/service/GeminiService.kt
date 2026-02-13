@@ -55,6 +55,11 @@ class GeminiService(
             4. `call_service(...)`:
                - Controls devices.
             
+            - **Specific Domains**:
+              - **Lights**: Use `turn_on`/`turn_off` with `brightness`, `rgb_color` etc.
+              - **Climate**: use `set_temperature` with `temperature`, or `set_hvac_mode` with `hvac_mode` (heat, cool, off).
+              - **Covers (Blinds)**: use `open_cover`/`close_cover` or `set_cover_position` with `position` (0-100).
+            
             ### REASONING & DEDUCTION
             - **Room Context**: If the user asks "turn on lights in the living room", you must:
               1. Call `list_entities(area='Living Room')` WITHOUT a domain filter.
@@ -65,6 +70,7 @@ class GeminiService(
               2. For each relevant room (or generally), call `list_entities(domain='sensor')` (or relevant domain).
               3. Group results and report.
             - **Vague Requests**: If the user says "turn off the light" without specifying which one, check most active area or ask clarification.
+            - **"Make it cozy"**: Infer meaning -> dim lights, close blinds.
             
             Always be helpful, concise, and natural.
         """.trimIndent())

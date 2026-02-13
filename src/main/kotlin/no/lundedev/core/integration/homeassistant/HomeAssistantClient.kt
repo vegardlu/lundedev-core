@@ -74,6 +74,7 @@ class HomeAssistantClient(
             {
               "entity_id": {{ state.entity_id | to_json }},
               "friendly_name": {{ state.name | to_json }},
+              "area_id": {{ area_id(state.entity_id) | to_json }},
               "area": {{ area_name(state.entity_id) | to_json }},
               "floor": {{ floor_name(state.entity_id) | to_json }},
               "state": {{ state.state | to_json }},
@@ -98,6 +99,7 @@ class HomeAssistantClient(
                     EnhancedEntityState(
                         entity_id = entityId,
                         friendly_name = (data["friendly_name"] as? String) ?: entityId,
+                        area_id = (data["area_id"] as? String)?.takeIf { it != "None" && it != "unknown" },
                         area = (data["area"] as? String)?.takeIf { it != "None" && it != "unknown" },
                         floor = (data["floor"] as? String)?.takeIf { it != "None" && it != "unknown" },
                         state = (data["state"] as? String) ?: "unknown",
@@ -151,7 +153,8 @@ data class EntityState(
 data class EnhancedEntityState(
     val entity_id: String,
     val friendly_name: String,
-    val area: String?,
+    val area_id: String?, // area_id()
+    val area: String?,    // area_name()
     val floor: String?,
     val state: String,
     val attributes: Map<String, Any?>
