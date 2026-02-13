@@ -7,13 +7,17 @@ import org.springframework.stereotype.Service
 class HomeAssistantMcpService(
     private val homeAssistantClient: HomeAssistantClient
 ) {
-    fun listEntities(domain: String? = null): List<String> {
-        return homeAssistantClient.getEntitiesWithArea(domain)
+    fun listEntities(domain: String? = null, area: String? = null): List<String> {
+        return homeAssistantClient.getEntitiesWithArea(domain, area)
             .map { entity ->
                 val deviceClass = entity.attributes["device_class"] ?: ""
                 val unit = entity.attributes["unit_of_measurement"] ?: ""
                 "${entity.entity_id}|${entity.friendly_name}|${entity.area ?: "None"}|${entity.floor ?: "None"}|${entity.state}|$deviceClass|$unit"
             }
+    }
+
+    fun listAreas(): List<String> {
+        return homeAssistantClient.getAreas()
     }
 
     fun getState(entityId: String): Map<String, Any?>? {

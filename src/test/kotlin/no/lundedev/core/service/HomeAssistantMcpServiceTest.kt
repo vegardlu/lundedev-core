@@ -21,7 +21,8 @@ class HomeAssistantMcpServiceTest {
             EnhancedEntityState("light.kitchen", "Kitchen Light", "Kitchen", "First Floor", "on", emptyMap()),
             EnhancedEntityState("switch.living_room", "Living Room Switch", null, null, "off", mapOf("device_class" to "outlet"))
         )
-        every { client.getEntitiesWithArea(null) } returns entities
+        // Ensure mock accepts both arguments, defaulting to null
+        every { client.getEntitiesWithArea(null, null) } returns entities
 
         val result = service.listEntities()
 
@@ -33,17 +34,30 @@ class HomeAssistantMcpServiceTest {
     }
 
     @Test
-    fun `listEntities should pass domain filter`() {
+    fun `listEntities should pass domain and area filter`() {
         val entities = listOf(
             EnhancedEntityState("light.kitchen", "Kitchen Light", "Kitchen", "First Floor", "on", emptyMap())
         )
-        every { client.getEntitiesWithArea("light") } returns entities
+        every { client.getEntitiesWithArea("light", "Kitchen") } returns entities
 
-        val result = service.listEntities("light")
+        val result = service.listEntities("light", "Kitchen")
 
         assertEquals(1, result.size)
         assertEquals("light.kitchen|Kitchen Light|Kitchen|First Floor|on||", result[0])
-        verify { client.getEntitiesWithArea("light") }
+        verify { client.getEntitiesWithArea("light", "Kitchen") }
+    }
+    
+    @Test
+    fun `listAreas should return list of strings`() {
+        val areas = listOf("Kitchen", "Living Room")
+        every { client.getAreas() } returns areas
+        
+        val result = service.listAreas()
+        
+        assertEquals(2, result.size)
+        assertTrue(result.contains("Kitchen"))
+        assertTrue(result.contains("Living Room"))
+        verify { client.getAreas() }
     }
 
     @Test

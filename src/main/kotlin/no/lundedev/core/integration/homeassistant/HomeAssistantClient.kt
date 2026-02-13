@@ -38,10 +38,35 @@ class HomeAssistantClient(
         }
     }
 
-    fun getEntitiesWithArea(domain: String? = null): List<EnhancedEntityState> {
+    fun getAreas(): List<String> {
+        val template = """
+            {{ areas() | to_json }}
+        """.trimIndent()
+        
+        val rendered = renderTemplate(template)
+        if (rendered.isBlank()) return emptyList()
+        
+        return try {
+            val mapper = com.fasterxml.jackson.databind.ObjectMapper()
+            mapper.readValue(rendered, List::class.java) as List<String>
+        } catch (e: Exception) {
+            logger.error("Failed to parse areas from Home Assistant", e)
+            emptyList()
+        }
+    }
+
+    fun getEntitiesWithArea(domain: String? = null, area: String? = null): List<EnhancedEntityState> {
+        val domainFilter = if (domain != null) "if state.entity_id.startswith('$domain.')" else ""
+        // Logic: if area is provided, only include entities where area_name(entity_id) matches (case-insensitive check handled by providing exact name from HA usually, but strict match here)
+        val areaFilter = if (area != null) "if area_name(state.entity_id) == '$area'" else ""
+        
+        // Combine filters. If both exist, we need 'and'.
+        val filters = listOf(domainFilter, areaFilter).filter { it.isNotEmpty() }.joinToString(" and ")
+        val filterString = if (filters.isNotEmpty()) filters else ""
+
         val template = """
             [
-            {%- for state in states ${if (domain != null) "if state.entity_id.startswith('$domain.')" else ""} -%}
+            {%- for state in states $filterString -%}
             {
               "entity_id": {{ state.entity_id | to_json }},
               "friendly_name": {{ state.name | to_json }},

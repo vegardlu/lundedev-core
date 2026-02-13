@@ -39,28 +39,32 @@ class GeminiService(
             ### TOOLS & DATA FORMAT
             You have access to tools to interact with Home Assistant.
             
-            1. `list_entities(domain: String?)`: 
-               - Returns a list of entities in the format: `entity_id|friendly_name|area|floor|state|device_class|unit`.
-               - Example output: `light.kitchen_ceiling|Kitchen Ceiling Light|Kitchen|1st Floor|on|light|`
-               - USE THIS to find entity IDs when the user asks about a room or a device name.
+            1. `list_areas()`:
+               - Returns a list of all configured rooms/areas (e.g. "Living Room", "Kitchen").
+               - USE THIS to discover valid room names.
                
-            2. `get_state(entity_id: String)`:
-               - Returns detailed state and attributes for a specific entity.
+            2. `list_entities(domain: String?, area: String?)`: 
+               - Returns a list of entities.
+               - text format: `entity_id|friendly_name|area|floor|state|device_class|unit`.
+               - `area`: Filter by exact area name (e.g. "Living Room"). THIS IS PREFERRED over client-side filtering.
+               - `domain`: Optional filter (e.g., 'light', 'switch').
                
-            3. `call_service(domain, service, entity_id, payload_json)`:
-               - Controls devices. Common services: `turn_on`, `turn_off`, `toggle`.
+            3. `get_state(entity_id: String)`:
+               - Returns detailed state and attributes.
+               
+            4. `call_service(...)`:
+               - Controls devices.
             
             ### REASONING & DEDUCTION
             - **Room Context**: If the user asks "turn on lights in the living room", you must:
-              1. Call `list_entities(domain='light')`.
-              2. Filter the results where `area` is 'Living Room' (or similar).
-              3. Call `call_service` for EACH matching entity.
-            - **"All Rooms"**: If the user asks "temperature in all rooms":
-              1. Call `list_entities(domain='sensor')`.
-              2. Filter for temperature sensors (look at device_class or unit).
-              3. Group the results by `area` and report the temperature for each room.
-            - **Vague Requests**: If the user says "turn off the light" without specifying which one, look for lights that are currently 'on' in the most likely area or ask for clarification listing the active lights.
-            - **Entity IDs**: NEVER ask the user for an `entity_id`. It is your job to find it using `list_entities`.
+              1. Call `list_entities(area='Living Room')` (or check `list_areas()` if unsure of name).
+              2. Inspect the returned entities. Look for ANY entity that is a light (domain `light.*` OR domain `switch.*` with light-related name/icon).
+              3. Call `call_service` for those entities.
+            - **"All Rooms"**: If the user asks "temperature in all rooms" or "show all rooms":
+              1. Call `list_areas()` to get the list of rooms.
+              2. For each relevant room (or generally), call `list_entities(domain='sensor')` (or relevant domain).
+              3. Group results and report.
+            - **Vague Requests**: If the user says "turn off the light" without specifying which one, check most active area or ask clarification.
             
             Always be helpful, concise, and natural.
         """.trimIndent())
@@ -74,6 +78,11 @@ class GeminiService(
     }
     
     private fun getTools(): Tool {
+        val listAreasFunc = FunctionDeclaration.newBuilder()
+            .setName("list_areas")
+            .setDescription("List all configured areas (rooms) in the home.")
+            .build()
+
         val listEntitiesFunc = FunctionDeclaration.newBuilder()
             .setName("list_entities")
             .setDescription("List all available entities in the home with details (id|name|area|floor|state|device_class|unit).")
@@ -82,7 +91,11 @@ class GeminiService(
                     .setType(Type.OBJECT)
                     .putProperties("domain", Schema.newBuilder()
                         .setType(Type.STRING)
-                        .setDescription("The domain to filter by (e.g., 'light', 'switch', 'sensor').")
+                        .setDescription("Optional domain filter (e.g., 'light', 'switch').")
+                        .build())
+                    .putProperties("area", Schema.newBuilder()
+                        .setType(Type.STRING)
+                        .setDescription("Optional area name filter (e.g., 'Living Room'). Use this to find everything in a room.")
                         .build())
                     .build()
             )
@@ -133,6 +146,7 @@ class GeminiService(
             .build()
             
         return Tool.newBuilder()
+            .addFunctionDeclarations(listAreasFunc)
             .addFunctionDeclarations(listEntitiesFunc)
             .addFunctionDeclarations(getStateFunc)
             .addFunctionDeclarations(callServiceFunc)
@@ -165,10 +179,13 @@ class GeminiService(
                  
                  val toolResult = try {
                      when (functionName) {
+                         "list_areas" -> {
+                             homeAssistantMcpService.listAreas().joinToString("\n")
+                         }
                          "list_entities" -> {
                              val domain = args["domain"]?.stringValue?.takeIf { it.isNotEmpty() }
-                             // Just joining with newline for cleaner prompt context
-                             homeAssistantMcpService.listEntities(domain).joinToString("\n")
+                             val area = args["area"]?.stringValue?.takeIf { it.isNotEmpty() }
+                             homeAssistantMcpService.listEntities(domain, area).joinToString("\n")
                          }
                          "get_state" -> {
                              val entityId = args["entity_id"]?.stringValue ?: ""
