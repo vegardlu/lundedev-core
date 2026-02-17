@@ -6,7 +6,7 @@ import no.lundedev.core.integration.homeassistant.EnhancedEntityState
 import org.springframework.stereotype.Service
 
 @Service
-class HomeAssistantMcpService(
+class HomeAssistantService(
     private val homeAssistantClient: HomeAssistantClient,
     private val homeAssistantCache: HomeAssistantCache
 ) {
