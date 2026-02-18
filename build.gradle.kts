@@ -35,8 +35,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("io.mockk:mockk:1.13.10")
     testImplementation("org.junit.platform:junit-platform-launcher")
-    // MCP dependency removed
-    implementation("com.google.cloud:google-cloud-vertexai:1.45.0")
+    implementation("com.google.genai:google-genai:1.39.0")
 }
 
 kotlin {

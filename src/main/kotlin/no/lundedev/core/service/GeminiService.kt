@@ -1,22 +1,15 @@
 package no.lundedev.core.service
 
-import com.google.cloud.vertexai.VertexAI
-import com.google.cloud.vertexai.api.FunctionDeclaration
-import com.google.cloud.vertexai.api.Schema
-import com.google.cloud.vertexai.api.Tool
-import com.google.cloud.vertexai.api.Type
-import com.google.cloud.vertexai.generativeai.GenerativeModel
-import com.google.cloud.vertexai.generativeai.ChatSession
-import com.google.cloud.vertexai.generativeai.ContentMaker
-import com.google.cloud.vertexai.generativeai.PartMaker
-import com.google.cloud.vertexai.generativeai.ResponseHandler
+import com.google.genai.Client
+import com.google.genai.types.Content
+import com.google.genai.types.GenerateContentConfig
+import com.google.genai.types.GenerateContentResponse
+import com.google.genai.types.Part
+import jakarta.annotation.PostConstruct
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import jakarta.annotation.PostConstruct
-import jakarta.annotation.PreDestroy
 import java.util.concurrent.ConcurrentHashMap
 import no.lundedev.core.util.JsonUtils
-import com.google.cloud.vertexai.api.GenerateContentResponse
 
 @Service
 class GeminiService(
@@ -24,15 +17,10 @@ class GeminiService(
     @Value("\${google.cloud.project-id:lundedev-core}") private val projectId: String,
     @Value("\${google.cloud.location:europe-west1}") private val location: String
 ) {
-    private lateinit var vertexAi: VertexAI
-    private lateinit var model: GenerativeModel
-    private val chatSessions = ConcurrentHashMap<String, ChatSession>()
-
-    @PostConstruct
-    fun init() {
-        vertexAi = VertexAI(projectId, location)
-        
-        val systemInstruction = ContentMaker.fromString("""
+    private lateinit var client: Client
+    // Map sessionId to a list of Content (chat history)
+    private val chatHistories = ConcurrentHashMap<String, MutableList<Content>>()
+    private val systemInstructionText = """
             You are a smart home assistant for the 'Lundedev' home.
             Your goal is to help the user control their home and get information about it.
             
@@ -83,58 +71,101 @@ class GeminiService(
               - Example: User says "stua". You see `light.living_room_ceiling`. -> MATCH. Control it.
             
             Always be helpful, concise, and natural.
-        """.trimIndent())
+        """.trimIndent()
 
-        model = GenerativeModel.Builder()
-            .setModelName("gemini-2.5-flash")
-            .setVertexAi(vertexAi)
-            .setTools(listOf(toolConfig.getTool()))
-            .setSystemInstruction(systemInstruction)
+    @PostConstruct
+    fun init() {
+        client = Client.builder()
+            .vertexAI(true)
+            .project(projectId)
+            .location(location)
             .build()
     }
 
-    @PreDestroy
-    fun close() {
-        if (::vertexAi.isInitialized) {
-            vertexAi.close()
-        }
-    }
-
     fun chat(sessionId: String, message: String): String {
-        val chat = chatSessions.computeIfAbsent(sessionId) { 
-            model.startChat()
+        val history = chatHistories.computeIfAbsent(sessionId) { mutableListOf() }
+        
+        // Add user message to history
+        val userContent = Content.builder()
+            .role("user")
+            .parts(listOf(Part.builder().text(message).build()))
+            .build()
+        history.add(userContent)
+
+        var currentResponse = generateResponse(history)
+        
+        // Loop to handle potential multiple function calls
+        while (isFunctionCall(currentResponse)) {
+            // Add model's response (with function call) to history
+            // We need to reconstruct the content from the response candidates to add to history
+            val candidates = currentResponse.candidates().orElse(emptyList())
+            val modelContent = if (candidates.isNotEmpty()) {
+                candidates[0].content().orElse(
+                    Content.builder().role("model").build()
+                )
+            } else {
+                 Content.builder().role("model").build()
+            }
+            history.add(modelContent)
+            
+            val functionCalls = currentResponse.functionCalls() ?: emptyList()
+
+            val functionResponses = functionCalls.map { functionCall ->
+                val functionName = functionCall.name().get()
+                val args = functionCall.args().orElse(emptyMap())
+                
+                val toolResult = toolConfig.execute(functionName, args)
+                
+                Part.fromFunctionResponse(functionName, mapOf("result" to toolResult))
+            }
+            
+            // Add tool response to history
+            val toolContent = Content.builder()
+                .role("function") 
+                .parts(functionResponses)
+                .build()
+                
+            history.add(toolContent)
+            
+            // Generate next response
+            currentResponse = generateResponse(history)
         }
         
-        var response = chat.sendMessage(message)
-        
-        // Handle tool calls
-        while (isFunctionCall(response)) {
-             val content = response.candidatesList[0].content
-             val functionCalls = content.partsList.filter { it.hasFunctionCall() }
-
-             val functionResponses = functionCalls.map { part ->
-                 val functionCall = part.functionCall
-                 val functionName = functionCall.name
-                 val args = functionCall.args.fieldsMap
-                 
-                 val toolResult = toolConfig.execute(functionName, args)
-                 
-                 PartMaker.fromFunctionResponse(functionName, mapOf("result" to toolResult))
-             }
-             
-             // Send results back to model
-             response = chat.sendMessage(
-                 ContentMaker.fromMultiModalData(*functionResponses.toTypedArray())
-             )
+        // Add final model response to history
+        val candidates = currentResponse.candidates().orElse(emptyList())
+        val finalModelContent = if (candidates.isNotEmpty()) {
+            candidates[0].content().orElse(
+                Content.builder().role("model").build()
+            )
+        } else {
+             Content.builder().role("model").build()
         }
+        history.add(finalModelContent)
 
-        return ResponseHandler.getText(response)
+        return currentResponse.text() ?: ""
     }
-    
+
+    private fun generateResponse(history: List<Content>): GenerateContentResponse {
+        val config = GenerateContentConfig.builder()
+            .systemInstruction(
+                Content.builder().parts(listOf(Part.builder().text(systemInstructionText).build())).build()
+            )
+            .tools(listOf(toolConfig.getTool()))
+            .build()
+
+        return client.models.generateContent(
+            "gemini-2.5-flash",
+            history,
+            config
+        )
+    }
+
     private fun isFunctionCall(response: GenerateContentResponse): Boolean {
-        if (response.candidatesList.isEmpty()) return false
-        val content = response.candidatesList[0].content
-        if (content.partsList.isEmpty()) return false
-        return content.partsList.any { it.hasFunctionCall() }
+        return try {
+            response.functionCalls()?.isNotEmpty() == true
+        } catch (e: Exception) {
+            false
+        }
     }
 }
+
