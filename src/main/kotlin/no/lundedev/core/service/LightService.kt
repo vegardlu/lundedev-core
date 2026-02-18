@@ -2,13 +2,14 @@ package no.lundedev.core.service
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import no.lundedev.core.integration.homeassistant.HomeAssistantClient
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
 class LightService(
     private val homeAssistantClient: HomeAssistantClient
 ) {
-    private val logger = org.slf4j.LoggerFactory.getLogger(LightService::class.java)
+    private val logger = LoggerFactory.getLogger(LightService::class.java)
 
     fun getLights(): List<LightDto> {
         // Use a template to get all details in one request, including area and floor which aren't in standard state attributes

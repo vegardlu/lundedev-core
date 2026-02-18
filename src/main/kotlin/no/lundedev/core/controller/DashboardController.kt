@@ -1,19 +1,23 @@
 package no.lundedev.core.controller
 
+import no.lundedev.core.service.BlindDto
 import no.lundedev.core.service.LightDto
 import no.lundedev.core.service.LightService
 import no.lundedev.core.service.UpdateLightCommand
 import no.lundedev.core.service.SensorService
 import no.lundedev.core.service.BlindService
+import no.lundedev.core.service.SensorDto
+import no.lundedev.core.service.WeatherDto
+import no.lundedev.core.service.WeatherService
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/dashboard")
 class DashboardController(
     private val lightService: LightService,
-    private val weatherService: no.lundedev.core.service.WeatherService,
-    private val sensorService: no.lundedev.core.service.SensorService,
-    private val blindService: no.lundedev.core.service.BlindService
+    private val weatherService: WeatherService,
+    private val sensorService: SensorService,
+    private val blindService: BlindService
 ) {
 
     @GetMapping("/lights")
@@ -22,17 +26,17 @@ class DashboardController(
     }
 
     @GetMapping("/weather")
-    fun getWeather(): List<no.lundedev.core.service.WeatherDto> {
+    fun getWeather(): List<WeatherDto> {
         return weatherService.getWeather()
     }
 
     @GetMapping("/sensors")
-    fun getSensors(): List<no.lundedev.core.service.SensorDto> {
+    fun getSensors(): List<SensorDto> {
         return sensorService.getSensors()
     }
 
     @GetMapping("/blinds")
-    fun getBlinds(): List<no.lundedev.core.service.BlindDto> {
+    fun getBlinds(): List<BlindDto> {
         return blindService.getBlinds()
     }
 

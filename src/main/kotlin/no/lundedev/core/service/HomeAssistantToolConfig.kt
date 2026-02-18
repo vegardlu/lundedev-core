@@ -17,8 +17,8 @@ class HomeAssistantToolConfig(
             .build()
     }
 
-    fun execute(functionName: String, args: Map<String, Any?>): String {
-        return try {
+    fun execute(functionName: String, args: Map<String, Any?>): String =
+        try {
             when (functionName) {
                 "list_areas" -> {
                     homeAssistantService.listAreas().joinToString("\n")
@@ -60,7 +60,6 @@ class HomeAssistantToolConfig(
         } catch (e: Exception) {
             "Error executing tool $functionName: ${e.message}"
         }
-    }
 
     private val listAreasFunc = FunctionDeclaration.builder()
         .name("list_areas")

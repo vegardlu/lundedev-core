@@ -3,6 +3,7 @@ package no.lundedev.core.integration.homeassistant
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.body
 
 @Component
 class HomeAssistantClient(
@@ -10,15 +11,11 @@ class HomeAssistantClient(
     private val properties: HomeAssistantProperties
 ) {
     private val logger = LoggerFactory.getLogger(HomeAssistantClient::class.java)
-    private val client: RestClient
-
-    init {
-        this.client = builder
-            .baseUrl(properties.url)
-            .defaultHeader("Authorization", "Bearer ${properties.token}")
-            .defaultHeader("Content-Type", "application/json")
-            .build()
-    }
+    private val client: RestClient = builder
+        .baseUrl(properties.url)
+        .defaultHeader("Authorization", "Bearer ${properties.token}")
+        .defaultHeader("Content-Type", "application/json")
+        .build()
 
     fun getStates(): List<EntityState> {
         logger.info("Fetching states from Home Assistant at {}", properties.url)
@@ -26,7 +23,7 @@ class HomeAssistantClient(
             client.get()
                 .uri("/api/states")
                 .retrieve()
-                .body(Array<EntityState>::class.java)
+                .body<Array<EntityState>>()
                 ?.toList()
                 ?.also { 
                     logger.info("Fetched ${it.size} entities. First 5 inputs: ${it.take(5).map { e -> "${e.entity_id}=${e.state}" }}") 
@@ -144,7 +141,7 @@ class HomeAssistantClient(
                 .uri("/api/template")
                 .body(mapOf("template" to template))
                 .retrieve()
-                .body(String::class.java)
+                .body<String>()
                 ?: ""
         } catch (e: Exception) {
             logger.error("Failed to render template in Home Assistant", e)

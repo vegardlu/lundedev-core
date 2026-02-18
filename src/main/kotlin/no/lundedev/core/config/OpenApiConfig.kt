@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Configuration
 class OpenApiConfig {
 
     @Bean
-    fun customOpenAPI(): OpenAPI {
-        return OpenAPI()
+    fun customOpenAPI(): OpenAPI =
+        OpenAPI()
             .info(
                 Info()
                     .title("Lundedev Core API")
@@ -23,5 +23,4 @@ class OpenApiConfig {
                         """.trimIndent()
                     )
             )
-    }
 }

@@ -18,11 +18,10 @@ class WeatherService(
     private val cache = ConcurrentHashMap<String, Pair<LocalDateTime, WeatherDto>>()
     private val cacheDurationMinutes = 30L
 
-    fun getWeather(): List<WeatherDto> {
-        return locations.map { location ->
+    fun getWeather(): List<WeatherDto> =
+        locations.map { location ->
             getCachedOrFetch(location)
         }
-    }
 
     private fun getCachedOrFetch(location: Location): WeatherDto {
         val now = LocalDateTime.now()

@@ -165,12 +165,11 @@ class GeminiService(
         )
     }
 
-    private fun isFunctionCall(response: GenerateContentResponse): Boolean {
-        return try {
+    private fun isFunctionCall(response: GenerateContentResponse): Boolean =
+        try {
             response.functionCalls()?.isNotEmpty() == true
         } catch (e: Exception) {
             false
         }
-    }
 }
 

@@ -33,15 +33,6 @@ class HomeAssistantService(
         }
     }
 
-    fun searchEntities(query: String): List<String> {
-        return homeAssistantCache.search(query)
-            .map { entity: EnhancedEntityState ->
-                val deviceClass = entity.attributes["device_class"] ?: ""
-                val unit = entity.attributes["unit_of_measurement"] ?: ""
-                "${entity.entity_id}|${entity.friendly_name}|${entity.area ?: "None"}|${entity.floor ?: "None"}|${entity.state}|$deviceClass|$unit"
-            }
-    }
-
     fun callService(domain: String, service: String, entityId: String, payload: Map<String, Any> = emptyMap()) {
         homeAssistantClient.callService(domain, service, entityId, payload)
         // Ideally, we should invalidate/update cache for this entity immediately, 

@@ -7,18 +7,14 @@ import org.springframework.web.client.RestClient
 @Component
 class YrClient(
     builder: RestClient.Builder,
-    private val properties: YrProperties
+    properties: YrProperties
 ) {
     private val logger = LoggerFactory.getLogger(YrClient::class.java)
-    private val client: RestClient
-
-    init {
-        this.client = builder
-            .baseUrl(properties.url)
-            .defaultHeader("User-Agent", properties.userAgent)
-            .defaultHeader("Accept", "application/json")
-            .build()
-    }
+    private val client: RestClient = builder
+        .baseUrl(properties.url)
+        .defaultHeader("User-Agent", properties.userAgent)
+        .defaultHeader("Accept", "application/json")
+        .build()
 
     fun getForecast(lat: Double, lon: Double): YrLocationForecastResponse? {
         logger.info("Fetching weather forecast for lat={}, lon={}", lat, lon)
