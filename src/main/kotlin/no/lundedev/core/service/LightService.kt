@@ -38,7 +38,6 @@ class LightService(
                         val isOn = state.equals("on", ignoreCase = true)
 
                         val supportedColorModes = try {
-                            // Simple manual parsing of JSON array string ["hs", "color_temp"] -> list
                             supportedColorModesString.removeSurrounding("[", "]")
                                 .split(",")
                                 .map { it.trim().removeSurrounding("\"") }

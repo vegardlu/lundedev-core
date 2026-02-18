@@ -97,8 +97,7 @@ class GeminiService(
         
         // Loop to handle potential multiple function calls
         while (isFunctionCall(currentResponse)) {
-            // Add model's response (with function call) to history
-            // We need to reconstruct the content from the response candidates to add to history
+            // Add model's response (with function call) to history to maintain context
             val candidates = currentResponse.candidates().orElse(emptyList())
             val modelContent = if (candidates.isNotEmpty()) {
                 candidates[0].content().orElse(

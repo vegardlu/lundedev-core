@@ -57,8 +57,7 @@ class HomeAssistantClient(
 
     fun getEntitiesWithArea(domain: String? = null, area: String? = null): List<EnhancedEntityState> {
         val domainFilter = if (domain != null) "if state.entity_id.startswith('$domain.')" else ""
-        // Logic: case-insensitive match for area name OR area_id. 
-        // We check if the provided 'area' matches either area_name(entity_id) OR area_id(entity_id).
+        // Match area name or ID case-insensitively
         val areaFilter = if (area != null) {
             val lowerArea = area.lowercase()
             "if (area_name(state.entity_id) or '').lower() == '$lowerArea' or (area_id(state.entity_id) or '').lower() == '$lowerArea'"
@@ -100,12 +99,8 @@ class HomeAssistantClient(
                     attributes = state.attributes
                 )
             }.filter { entity ->
-                // Apply manual filtering on the client side since we fetched everything
+                // Fallback: match domain only, as area info is missing
                 val matchDomain = domain == null || entity.entity_id.startsWith("$domain.")
-                // We can't filter by area efficiently in fallback since we don't have area info, 
-                // so we return everything or maybe just filter by domain if area is null.
-                // If area was requested but we failed to get area info, strictly we should return nothing or everything?
-                // Returning everything with a warning is better than nothing.
                 matchDomain
             }
         }

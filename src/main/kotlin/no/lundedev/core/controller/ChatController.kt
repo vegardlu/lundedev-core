@@ -24,7 +24,7 @@ class ChatController(
         authentication: Authentication
     ): ChatResponse {
         try {
-            // using name as session id for now
+            // Authenticated username is used as session ID to maintain per-user history
             val response = geminiService.chat(authentication.name, request.message)
             return ChatResponse(response)
         } catch (e: Exception) {
