@@ -83,6 +83,7 @@ class GeminiService(
     }
 
     fun chat(sessionId: String, message: String): String {
+        println("SESSION [$sessionId] USER: $message")
         val history = chatHistories.computeIfAbsent(sessionId) { mutableListOf() }
         
         // Add user message to history
@@ -109,12 +110,15 @@ class GeminiService(
             history.add(modelContent)
             
             val functionCalls = currentResponse.functionCalls() ?: emptyList()
+            println("SESSION [$sessionId] FUNCTION CALLS: ${functionCalls.size}")
 
             val functionResponses = functionCalls.map { functionCall ->
                 val functionName = functionCall.name().get()
                 val args = functionCall.args().orElse(emptyMap())
                 
+                println("SESSION [$sessionId] EXECUTING TOOL: $functionName with args $args")
                 val toolResult = toolConfig.execute(functionName, args)
+                println("SESSION [$sessionId] TOOL RESULT: ${toolResult.take(100)}...")
                 
                 Part.fromFunctionResponse(functionName, mapOf("result" to toolResult))
             }
@@ -142,7 +146,9 @@ class GeminiService(
         }
         history.add(finalModelContent)
 
-        return currentResponse.text() ?: ""
+        val responseText = currentResponse.text() ?: ""
+        println("SESSION [$sessionId] MODEL: $responseText")
+        return responseText
     }
 
     private fun generateResponse(history: List<Content>): GenerateContentResponse {

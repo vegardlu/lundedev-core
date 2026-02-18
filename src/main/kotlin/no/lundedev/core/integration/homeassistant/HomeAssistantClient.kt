@@ -86,12 +86,41 @@ class HomeAssistantClient(
 
         val rendered = renderTemplate(template)
         
-        if (rendered.isBlank()) return emptyList()
+        // Helper function for fallback
+        fun fallback(): List<EnhancedEntityState> {
+            logger.warn("Template rendering failed or returned empty. Falling back to /api/states.")
+            return getStates().map { state ->
+                EnhancedEntityState(
+                    entity_id = state.entity_id,
+                    friendly_name = (state.attributes["friendly_name"] as? String) ?: state.entity_id,
+                    area_id = null,
+                    area = null,
+                    floor = null,
+                    state = state.state,
+                    attributes = state.attributes
+                )
+            }.filter { entity ->
+                // Apply manual filtering on the client side since we fetched everything
+                val matchDomain = domain == null || entity.entity_id.startsWith("$domain.")
+                // We can't filter by area efficiently in fallback since we don't have area info, 
+                // so we return everything or maybe just filter by domain if area is null.
+                // If area was requested but we failed to get area info, strictly we should return nothing or everything?
+                // Returning everything with a warning is better than nothing.
+                matchDomain
+            }
+        }
+
+        if (rendered.isBlank()) return fallback()
 
         return try {
             val mapper = com.fasterxml.jackson.databind.ObjectMapper()
             val typeRef = object : com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Any?>>>() {}
             val rawList = mapper.readValue(rendered, typeRef)
+            
+            if (rawList.isEmpty() && (domain == null && area == null)) {
+                // If we asked for everything and got nothing, something is wrong.
+                return fallback()
+            }
             
             rawList.mapNotNull { data ->
                 val entityId = data["entity_id"] as? String
@@ -108,8 +137,8 @@ class HomeAssistantClient(
                 } else null
             }
         } catch (e: Exception) {
-            logger.error("Failed to parse entities JSON from Home Assistant", e)
-            emptyList()
+            logger.error("Failed to parse entities JSON from Home Assistant: ${e.message}. Falling back.", e)
+            fallback()
         }
     }
 

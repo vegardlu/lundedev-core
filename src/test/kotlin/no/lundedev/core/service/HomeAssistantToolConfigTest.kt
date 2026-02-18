@@ -76,4 +76,15 @@ class HomeAssistantToolConfigTest {
             ) 
         }
     }
+    @Test
+    fun `list_entities with no arguments should return all entities`() {
+        every { homeAssistantService.listEntities(null, null) } returns listOf(
+            "sensor.outdoor_temperature|Outdoor|Outdoor|null|10.0|temperature|°C"
+        )
+        
+        val result = toolConfig.execute("list_entities", emptyMap())
+        
+        assertTrue(result.contains("sensor.outdoor_temperature"))
+        verify { homeAssistantService.listEntities(null, null) }
+    }
 }

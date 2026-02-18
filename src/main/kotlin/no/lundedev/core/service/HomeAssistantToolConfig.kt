@@ -33,6 +33,8 @@ class HomeAssistantToolConfig(
                         val allEntities = homeAssistantService.listEntities(null, null)
                         "No entities found with filter [domain=$domain, area=$area]. Here is the COMPLETE list of entities. Please check this list to find what the user meant:\n" + 
                         allEntities.joinToString("\n")
+                    } else if (result.isEmpty()) {
+                        "No entities found. The system might be disconnected or there are no devices."
                     } else {
                         result.joinToString("\n")
                     }

@@ -121,4 +121,25 @@ class HomeAssistantCacheTest {
         // light.kitchen only matches "light" -> Lower Score.
         assertEquals("light.living_room_ceiling", lightResults[0].entity_id)
     }
+    @Test
+    fun `refreshCache should handle client failure gracefully`() {
+        // Initial success
+        every { client.getEntitiesWithArea(null, null) } returns listOf(
+             EnhancedEntityState("light.kitchen", "Kitchen Light", "kitchen", "Kitchen", "First Floor", "on", emptyMap())
+        )
+        // Set area cache too
+        every { client.getAreas() } returns listOf("Kitchen")
+        
+        cache.refreshCache()
+        assertEquals(1, cache.getAllEntities().size)
+        
+        // Second call fails
+        every { client.getEntitiesWithArea(null, null) } throws RuntimeException("Connection failed")
+        
+        cache.refreshCache()
+        
+        // Cache should remain populated
+        assertEquals(1, cache.getAllEntities().size)
+        assertEquals("light.kitchen", cache.getEntity("light.kitchen")?.entity_id)
+    }
 }
