@@ -28,7 +28,7 @@ class ChatController(
             val response = geminiService.chat(authentication.name, request.message)
             return ChatResponse(response)
         } catch (e: Exception) {
-            logger.error("Error processing chat request", e)
+            logger.error("Error processing chat request.", e)
             throw e
         }
     }
