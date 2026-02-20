@@ -85,10 +85,10 @@ class GeminiService(
     }
 
     private fun verifyModel() {
-        println("SESSION [SYSTEM] VERIFYING MODEL: gemini-3.1-pro")
+        println("SESSION [SYSTEM] VERIFYING MODEL: gemini-3.1-pro-preview")
         try {
             val response = client.models.generateContent(
-                "gemini-3.1-pro",
+                "gemini-3.1-pro-preview",
                 "ping",
                 GenerateContentConfig.builder().build()
             )
@@ -177,7 +177,7 @@ class GeminiService(
             .build()
 
         return client.models.generateContent(
-            "gemini-3.1-pro",
+            "gemini-3.1-pro-preview",
             history,
             config
         )
