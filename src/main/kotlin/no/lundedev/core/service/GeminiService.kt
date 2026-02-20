@@ -73,8 +73,6 @@ class GeminiService(
             Always be helpful, concise, and natural.
         """.trimIndent()
 
-    private var activeModel: String = "gemini-3.1-pro" // fallback
-
     @PostConstruct
     fun init() {
         client = Client.builder()
@@ -82,39 +80,6 @@ class GeminiService(
             .project(projectId)
             .location(location)
             .build()
-            
-        verifyAndFindModel()
-    }
-
-    private fun verifyAndFindModel() {
-        val candidates = listOf(
-            "gemini-3.1-pro-preview",
-            "gemini-3.1-pro",
-            "gemini-pro-3.1",
-            "gemini-3-pro-preview",
-            "gemini-3-pro",
-            "gemini-3-flash-preview",
-            "gemini-experimental",
-            "gemini-1.5-pro",
-            "gemini-2.5-flash"
-        )
-        
-        for (model in candidates) {
-            println("SESSION [SYSTEM] VERIFYING MODEL: $model")
-            try {
-                val response = client.models.generateContent(
-                    model,
-                    "ping",
-                    GenerateContentConfig.builder().build()
-                )
-                println("SESSION [SYSTEM] MODEL VERIFICATION SUCCESSFUL for $model: ${response.text()}")
-                activeModel = model
-                return
-            } catch (e: Exception) {
-                System.err.println("SESSION [SYSTEM] MODEL VERIFICATION FAILED for $model.")
-            }
-        }
-        System.err.println("SESSION [SYSTEM] ALL MODEL VERIFICATIONS FAILED.")
     }
 
     fun chat(sessionId: String, message: String): String {
@@ -194,7 +159,7 @@ class GeminiService(
             .build()
 
         return client.models.generateContent(
-            activeModel,
+            "gemini-2.5-flash",
             history,
             config
         )
