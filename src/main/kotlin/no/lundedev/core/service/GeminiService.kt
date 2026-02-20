@@ -73,6 +73,8 @@ class GeminiService(
             Always be helpful, concise, and natural.
         """.trimIndent()
 
+    private var activeModel: String = "gemini-3.1-pro" // fallback
+
     @PostConstruct
     fun init() {
         client = Client.builder()
@@ -81,23 +83,35 @@ class GeminiService(
             .location(location)
             .build()
             
-        verifyModel()
+        verifyAndFindModel()
     }
 
-    private fun verifyModel() {
-        println("SESSION [SYSTEM] VERIFYING MODEL: gemini-3.1-pro-preview")
-        try {
-            val response = client.models.generateContent(
-                "gemini-3.1-pro-preview",
-                "ping",
-                GenerateContentConfig.builder().build()
-            )
-            println("SESSION [SYSTEM] MODEL VERIFICATION SUCCESSFUL: ${response.text()}")
-        } catch (e: Exception) {
-            System.err.println("SESSION [SYSTEM] MODEL VERIFICATION FAILED. Model might be incorrect or unavailable.")
-            e.printStackTrace()
-            // Depending on requirements, we could throw here to stop startup, but logging might be safer for now.
+    private fun verifyAndFindModel() {
+        val candidates = listOf(
+            "gemini-3.1-pro-preview",
+            "gemini-3.1-pro",
+            "gemini-pro-3.1",
+            "gemini-experimental",
+            "gemini-1.5-pro",
+            "gemini-2.5-flash"
+        )
+        
+        for (model in candidates) {
+            println("SESSION [SYSTEM] VERIFYING MODEL: $model")
+            try {
+                val response = client.models.generateContent(
+                    model,
+                    "ping",
+                    GenerateContentConfig.builder().build()
+                )
+                println("SESSION [SYSTEM] MODEL VERIFICATION SUCCESSFUL for $model: ${response.text()}")
+                activeModel = model
+                return
+            } catch (e: Exception) {
+                System.err.println("SESSION [SYSTEM] MODEL VERIFICATION FAILED for $model.")
+            }
         }
+        System.err.println("SESSION [SYSTEM] ALL MODEL VERIFICATIONS FAILED.")
     }
 
     fun chat(sessionId: String, message: String): String {
@@ -177,7 +191,7 @@ class GeminiService(
             .build()
 
         return client.models.generateContent(
-            "gemini-3.1-pro-preview",
+            activeModel,
             history,
             config
         )
