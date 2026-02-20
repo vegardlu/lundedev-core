@@ -23,7 +23,7 @@ class HomeAssistantClient(
             client.get()
                 .uri("/api/states")
                 .retrieve()
-                .body<Array<EntityState>>()
+                .body(Array<EntityState>::class.java)
                 ?.toList()
                 ?.also { 
                     logger.info("Fetched ${it.size} entities. First 5 inputs: ${it.take(5).map { e -> "${e.entity_id}=${e.state}" }}") 
@@ -141,7 +141,7 @@ class HomeAssistantClient(
                 .uri("/api/template")
                 .body(mapOf("template" to template))
                 .retrieve()
-                .body<String>()
+                .body(String::class.java)
                 ?: ""
         } catch (e: Exception) {
             logger.error("Failed to render template in Home Assistant", e)
