@@ -15,7 +15,7 @@ import no.lundedev.core.util.JsonUtils
 class GeminiService(
     private val toolConfig: HomeAssistantToolConfig,
     @Value("\${google.cloud.project-id:lundedev-core}") private val projectId: String,
-    @Value("\${google.cloud.location:europe-west1}") private val location: String
+    @Value("\${google.cloud.location:us-central1}") private val location: String
 ) {
     private lateinit var client: Client
     // Map sessionId to a list of Content (chat history)
