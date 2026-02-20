@@ -91,6 +91,9 @@ class GeminiService(
             "gemini-3.1-pro-preview",
             "gemini-3.1-pro",
             "gemini-pro-3.1",
+            "gemini-3-pro-preview",
+            "gemini-3-pro",
+            "gemini-3-flash-preview",
             "gemini-experimental",
             "gemini-1.5-pro",
             "gemini-2.5-flash"
