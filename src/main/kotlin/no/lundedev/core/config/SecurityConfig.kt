@@ -19,6 +19,8 @@ import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
+import org.springframework.boot.context.properties.EnableConfigurationProperties
+
 @ConfigurationProperties(prefix = "app.security")
 data class SecurityProperties(
     val allowedClientIds: List<String> = emptyList()
@@ -26,6 +28,7 @@ data class SecurityProperties(
 
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(SecurityProperties::class)
 class SecurityConfig(
     private val securityProperties: SecurityProperties
 ) {
@@ -51,10 +54,12 @@ class SecurityConfig(
         http
             .authorizeHttpRequests { auth ->
                 auth
+                    .requestMatchers(*PUBLIC_ENDPOINTS).permitAll()
+                    .requestMatchers(*SWAGGER_ENDPOINTS).permitAll()
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
-            .requestMatchers("/api/dashboard/**").authenticated()
-            .requestMatchers("/api/chat/**").authenticated() // Allow chat
-            .anyRequest().authenticated()
+                    .requestMatchers("/api/dashboard/**").authenticated()
+                    .requestMatchers("/api/chat/**").authenticated() // Allow chat
+                    .anyRequest().authenticated()
             }
             .csrf { it.disable() } // Disable CSRF for API consistency
             .cors { } // Enable CORS

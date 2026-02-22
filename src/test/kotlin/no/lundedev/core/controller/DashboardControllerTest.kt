@@ -48,6 +48,7 @@ class DashboardControllerTest {
         @Bean fun weatherService() = mockk<WeatherService>(relaxed = true)
         @Bean fun sensorService() = mockk<SensorService>(relaxed = true)
         @Bean fun blindService() = mockk<BlindService>(relaxed = true)
+        @Bean fun objectMapper(): ObjectMapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
     }
 
     @Test
