@@ -1,59 +1,62 @@
 package no.lundedev.core.service
 
-import com.google.genai.Client
-import com.google.genai.Models
-import com.google.genai.types.GenerateContentResponse
-import com.google.genai.types.Candidate
-import com.google.genai.types.Content
-import com.google.genai.types.Part
-import com.google.genai.types.FunctionCall
-import com.google.genai.types.GenerateContentConfig
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.util.Optional
+import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor
 
 class GeminiServiceTest {
 
-    private val toolConfig = mockk<HomeAssistantToolConfig>()
-    private val client = mockk<Client>()
-    private val models = mockk<Models>()
+    private val chatClient = mockk<ChatClient>()
+    private val requestSpec = mockk<ChatClient.PromptUserSpec>()
+    private val advisorSpec = mockk<ChatClient.AdvisorSpec>()
+    private val callResponseSpec = mockk<ChatClient.CallResponseSpec>()
+    
     private lateinit var geminiService: GeminiService
 
     @BeforeEach
     fun setUp() {
-        // Construct service with mocked dependencies
-        geminiService = GeminiService(toolConfig, "test-project", "test-location")
-
-        // We use reflection or inject the mock client since it is initialized in @PostConstruct
-        val field = GeminiService::class.java.getDeclaredField("client")
-        field.isAccessible = true
-        field.set(geminiService, client)
+        val builder = mockk<ChatClient.Builder>()
         
-        every { client.models } returns models
+        every { builder.defaultSystem(any<String>()) } returns builder
+        every { builder.defaultAdvisors(any<MessageChatMemoryAdvisor>()) } returns builder
+        every { builder.defaultFunctions(any(), any(), any(), any()) } returns builder
+        every { builder.build() } returns chatClient
+        
+        // Initialize GeminiService, which builds the ChatClient in its constructor
+        geminiService = GeminiService(builder)
     }
 
     @Test
     fun `chat handles simple text response without tools`() {
-        val expectedText = "Hello from Google GenAI!"
-        val response = mockk<GenerateContentResponse>()
-        every { response.functionCalls() } returns null
-        every { response.text() } returns expectedText
+        val expectedText = "Hello from Spring AI!"
+        val sessionId = "session-1"
+        val userMessage = "Hi there"
         
-        val candidate = mockk<Candidate>()
-        every { candidate.content() } returns Optional.of(Content.builder().role("model").build())
-        every { response.candidates() } returns Optional.of(listOf(candidate))
+        // Mock the fluent API chain: chatClient.prompt().user().advisors().call().content()
+        val requestSpecBase = mockk<ChatClient.PromptUserSpec>()
+        every { chatClient.prompt() } returns requestSpecBase
+        every { requestSpecBase.user(userMessage) } returns requestSpec
+        
+        // Mock advisors lambda
+        every { requestSpec.advisors(any<(ChatClient.AdvisorSpec) -> Unit>()) } answers {
+            val configurer = arg<((ChatClient.AdvisorSpec) -> Unit)>(0)
+            configurer.invoke(advisorSpec)
+            requestSpec
+        }
+        
+        every { advisorSpec.param(MessageChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, sessionId) } returns advisorSpec
+        every { requestSpec.call() } returns callResponseSpec
+        every { callResponseSpec.content() } returns expectedText
 
-        val anyList = mutableListOf<Content>()
-        every { models.generateContent(any(), anyList, any<GenerateContentConfig>()) } returns response
-
-        val result = geminiService.chat("session-1", "Hi there")
+        val result = geminiService.chat(sessionId, userMessage)
 
         assertEquals(expectedText, result)
-        verify(exactly = 1) { models.generateContent(any(), anyList, any<GenerateContentConfig>()) }
+        verify(exactly = 1) { chatClient.prompt() }
+        verify(exactly = 1) { callResponseSpec.content() }
     }
-
 }

@@ -18,6 +18,12 @@ java {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://repo.spring.io/milestone") }
+    maven { url = uri("https://repo.spring.io/snapshot") }
+}
+
+ext {
+    set("springAiVersion", "2.0.0-M1")
 }
 
 dependencies {
@@ -42,7 +48,9 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.9")
     testImplementation("org.junit.platform:junit-platform-launcher")
     testImplementation("com.h2database:h2")
-    implementation("com.google.genai:google-genai:1.39.0")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation("org.springframework.ai:spring-ai-vertex-ai-gemini-spring-boot-starter")
+    implementation("org.springframework.ai:spring-ai-starter-mcp-client")
 }
 
 kotlin {
@@ -54,4 +62,10 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.ai:spring-ai-bom:${property("springAiVersion")}")
+    }
 }
