@@ -23,7 +23,7 @@ repositories {
 }
 
 ext {
-    set("springAiVersion", "1.0.0-SNAPSHOT")
+    set("springAiVersion", "1.1.2")
 }
 
 dependencies {
@@ -49,7 +49,7 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-launcher")
     testImplementation("com.h2database:h2")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
-    implementation("org.springframework.ai:spring-ai-vertex-ai-gemini-spring-boot-starter")
+    implementation("org.springframework.ai:spring-ai-starter-model-vertex-ai-gemini")
     // Re-adding the starter now that we know 1.0.0-SNAPSHOT has it
     implementation("org.springframework.ai:spring-ai-starter-mcp-client")
 }

@@ -12,7 +12,7 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor
 class GeminiServiceTest {
 
     private val chatClient = mockk<ChatClient>()
-    private val requestSpec = mockk<ChatClient.PromptUserSpec>()
+    private val requestSpec = mockk<ChatClient.ChatClientRequestSpec>()
     private val advisorSpec = mockk<ChatClient.AdvisorSpec>()
     private val callResponseSpec = mockk<ChatClient.CallResponseSpec>()
     
@@ -24,7 +24,7 @@ class GeminiServiceTest {
         
         every { builder.defaultSystem(any<String>()) } returns builder
         every { builder.defaultAdvisors(any<MessageChatMemoryAdvisor>()) } returns builder
-        every { builder.defaultFunctions(any(), any(), any(), any()) } returns builder
+        every { builder.defaultToolNames(*anyVararg()) } returns builder
         every { builder.build() } returns chatClient
         
         // Initialize GeminiService, which builds the ChatClient in its constructor
@@ -38,18 +38,18 @@ class GeminiServiceTest {
         val userMessage = "Hi there"
         
         // Mock the fluent API chain: chatClient.prompt().user().advisors().call().content()
-        val requestSpecBase = mockk<ChatClient.PromptUserSpec>()
+        val requestSpecBase = mockk<ChatClient.ChatClientRequestSpec>()
         every { chatClient.prompt() } returns requestSpecBase
         every { requestSpecBase.user(userMessage) } returns requestSpec
         
         // Mock advisors lambda
-        every { requestSpec.advisors(any<(ChatClient.AdvisorSpec) -> Unit>()) } answers {
-            val configurer = arg<((ChatClient.AdvisorSpec) -> Unit)>(0)
-            configurer.invoke(advisorSpec)
+        every { requestSpec.advisors(any<java.util.function.Consumer<ChatClient.AdvisorSpec>>()) } answers {
+            val configurer = arg<java.util.function.Consumer<ChatClient.AdvisorSpec>>(0)
+            configurer.accept(advisorSpec)
             requestSpec
         }
         
-        every { advisorSpec.param(MessageChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, sessionId) } returns advisorSpec
+        every { advisorSpec.param(org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID, sessionId) } returns advisorSpec
         every { requestSpec.call() } returns callResponseSpec
         every { callResponseSpec.content() } returns expectedText
 

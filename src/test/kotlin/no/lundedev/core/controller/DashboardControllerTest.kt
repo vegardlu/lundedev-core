@@ -20,8 +20,11 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
+import org.springframework.context.annotation.Import
+
 @WebMvcTest(DashboardController::class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(DashboardControllerTest.Config::class)
 class DashboardControllerTest {
 
     @Autowired

@@ -18,9 +18,14 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 
 @WebMvcTest(ChatController::class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(ChatControllerTest.Config::class)
 class ChatControllerTest {
 
     @Autowired
@@ -35,19 +40,24 @@ class ChatControllerTest {
     @TestConfiguration
     class Config {
         @Bean
+        @Primary
         fun geminiService() = mockk<GeminiService>()
+
+        @Bean
+        fun objectMapper(): ObjectMapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
     }
 
     @Test
-    @WithMockUser(username = "testuser")
     fun `chat should return response from GeminiService`() {
         val request = ChatRequest(message = "Hello, world!")
         val expectedResponse = "Hello from Gemini"
+        val auth = UsernamePasswordAuthenticationToken("testuser", "password", emptyList())
 
         every { geminiService.chat(any(), "Hello, world!") } returns expectedResponse
 
         mockMvc.perform(
             post("/api/chat")
+                .principal(auth)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .with(csrf())

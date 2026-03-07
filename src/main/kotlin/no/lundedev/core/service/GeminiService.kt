@@ -2,8 +2,27 @@ package no.lundedev.core.service
 
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor
-import org.springframework.ai.chat.memory.InMemoryChatMemory
+import org.springframework.ai.chat.memory.ChatMemory
 import org.springframework.stereotype.Service
+
+class InMemoryChatMemory : ChatMemory {
+    private val memory = java.util.concurrent.ConcurrentHashMap<String, MutableList<org.springframework.ai.chat.messages.Message>>()
+    override fun add(conversationId: String, messages: List<org.springframework.ai.chat.messages.Message>) {
+        memory.getOrPut(conversationId) { mutableListOf() }.addAll(messages)
+    }
+    
+    override fun add(conversationId: String, message: org.springframework.ai.chat.messages.Message) {
+        memory.getOrPut(conversationId) { mutableListOf() }.add(message)
+    }
+
+    override fun get(conversationId: String): List<org.springframework.ai.chat.messages.Message> {
+        return memory[conversationId] ?: emptyList()
+    }
+
+    override fun clear(conversationId: String) {
+        memory.remove(conversationId)
+    }
+}
 
 @Service
 class GeminiService(
@@ -65,8 +84,8 @@ class GeminiService(
 
     private val chatClient: ChatClient = chatClientBuilder
         .defaultSystem(systemInstructionText)
-        .defaultAdvisors(MessageChatMemoryAdvisor(chatMemory))
-        .defaultFunctions("listAreas", "listEntities", "getState", "callService")
+        .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+        .defaultToolNames("listAreas", "listEntities", "getState", "callService")
         .build()
 
     fun chat(sessionId: String, message: String): String {
@@ -74,7 +93,7 @@ class GeminiService(
         
         val response = chatClient.prompt()
             .user(message)
-            .advisors { a -> a.param(MessageChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, sessionId) }
+            .advisors { a -> a.param(ChatMemory.CONVERSATION_ID, sessionId) }
             .call()
             .content() ?: ""
             
