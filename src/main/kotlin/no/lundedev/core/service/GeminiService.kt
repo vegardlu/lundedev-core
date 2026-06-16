@@ -34,7 +34,7 @@ class GeminiService(
             Your goal is to help the user control their home and get information about it.
             
             ### TOOLS & DATA FORMAT
-            You have access to tools to interact with Home Assistant, and an MCP server with other integrations (like Weather).
+            You have access to tools to interact with Home Assistant.
             
             1. `listAreas()`:
                - Returns a list of all configured rooms/areas (e.g. "Living Room", "Kitchen").
